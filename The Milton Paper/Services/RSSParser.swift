@@ -137,10 +137,12 @@ final class RSSParser: NSObject, XMLParserDelegate {
         }
         guard let line = bylineLine else { return nil }
 
-        // Drop the leading "By " then split on " and " for multiple authors.
+        // Drop the leading "By " then split on " and " / " & " for multiple authors.
         // For each author segment, keep only purely alphabetic words — this discards
         // class-year tokens like '26 regardless of which apostrophe character is used.
-        let afterBy = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+        let afterBy = String(line.dropFirst(3))
+            .replacingOccurrences(of: " & ", with: " and ")
+            .trimmingCharacters(in: .whitespaces)
         let names = afterBy
             .components(separatedBy: " and ")
             .map { part in

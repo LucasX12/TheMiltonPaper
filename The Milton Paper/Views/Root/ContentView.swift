@@ -36,13 +36,17 @@ struct ContentView: View {
                 .tabItem { Label("Home", systemImage: "house.fill") }
                 .tag(0)
 
+            SearchView()
+                .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                .tag(1)
+
             BookmarksView()
                 .tabItem { Label("Bookmarks", systemImage: "bookmark.fill") }
-                .tag(1)
+                .tag(2)
 
             ProfileView()
                 .tabItem { Label("Profile", systemImage: "person.fill") }
-                .tag(2)
+                .tag(3)
         }
         .tint(.miltonPrimary)
     }

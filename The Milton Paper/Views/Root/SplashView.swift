@@ -9,15 +9,10 @@ struct SplashView: View {
             Color.miltonBackground.ignoresSafeArea()
 
             VStack(spacing: 12) {
-                Image(systemName: "newspaper.fill")
-                    .font(.system(size: 52, weight: .light))
-                    .foregroundColor(.miltonPrimary)
-
                 VStack(spacing: 6) {
-                    Text("THE MILTON PAPER")
-                        .font(.custom("Georgia", size: 26).weight(.bold))
+                    Text("The Milton Paper")
+                        .font(.custom("OldEnglishTextMT", size: 44))
                         .foregroundColor(.miltonPrimary)
-                        .tracking(3)
 
                     Rectangle()
                         .fill(Color.miltonAccent)

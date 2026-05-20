@@ -68,6 +68,31 @@ struct LoginView: View {
                             }
                             .disabled(authViewModel.isLoading)
 
+                            // Divider
+                            HStack {
+                                Rectangle().fill(Color.miltonSecondary.opacity(0.25)).frame(height: 1)
+                                Text("or").font(.miltonCaption).foregroundColor(.miltonSecondary)
+                                Rectangle().fill(Color.miltonSecondary.opacity(0.25)).frame(height: 1)
+                            }
+
+                            Button {
+                                Task { await authViewModel.signInWithGoogle() }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "globe")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("Continue with Google")
+                                        .font(.system(size: 16, weight: .medium))
+                                }
+                                .foregroundColor(.miltonText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.miltonSurface)
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.miltonSecondary.opacity(0.3), lineWidth: 1))
+                            }
+                            .disabled(authViewModel.isLoading)
+
                             Button {
                                 dismiss()
                             } label: {

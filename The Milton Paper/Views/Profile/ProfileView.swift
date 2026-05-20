@@ -3,6 +3,10 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var showLoginPrompt = false
+    @State private var inProgressArticles: [ReadingRecord] = []
+    @State private var recentlyReadArticles: [ReadingRecord] = []
+
+    private let listCap = 3
 
     var body: some View {
         NavigationStack {
@@ -19,6 +23,7 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(Color.miltonSurface, for: .navigationBar)
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
+            .onAppear { loadReadingHistory() }
         }
     }
 
@@ -51,6 +56,60 @@ struct ProfileView: View {
                 .padding(.vertical, 4)
             }
 
+            // Pick up where you left off
+            Section("Pick Up Where You Left Off") {
+                if inProgressArticles.isEmpty {
+                    Text("No articles in progress")
+                        .font(.miltonCaption)
+                        .foregroundColor(.miltonSecondary)
+                        .padding(.vertical, 4)
+                } else {
+                    ForEach(inProgressArticles.prefix(listCap)) { record in
+                        NavigationLink {
+                            ReadingResumeView(record: record)
+                        } label: {
+                            ReadingRecordRow(record: record)
+                        }
+                    }
+                    if inProgressArticles.count > listCap {
+                        NavigationLink {
+                            ReadingHistoryListView(title: "In Progress", records: inProgressArticles)
+                        } label: {
+                            Text("See All (\(inProgressArticles.count))")
+                                .font(.miltonCaption)
+                                .foregroundColor(.miltonPrimary)
+                        }
+                    }
+                }
+            }
+
+            // Recently read
+            Section("Recently Read") {
+                if recentlyReadArticles.isEmpty {
+                    Text("Articles you finish will appear here")
+                        .font(.miltonCaption)
+                        .foregroundColor(.miltonSecondary)
+                        .padding(.vertical, 4)
+                } else {
+                    ForEach(recentlyReadArticles.prefix(listCap)) { record in
+                        NavigationLink {
+                            ReadingResumeView(record: record)
+                        } label: {
+                            ReadingRecordRow(record: record)
+                        }
+                    }
+                    if recentlyReadArticles.count > listCap {
+                        NavigationLink {
+                            ReadingHistoryListView(title: "Recently Read", records: recentlyReadArticles)
+                        } label: {
+                            Text("See All (\(recentlyReadArticles.count))")
+                                .font(.miltonCaption)
+                                .foregroundColor(.miltonPrimary)
+                        }
+                    }
+                }
+            }
+
             // Settings
             Section("Preferences") {
                 NavigationLink {
@@ -77,7 +136,11 @@ struct ProfileView: View {
                         .font(.miltonCaption)
                         .foregroundColor(.miltonSecondary)
                 }
-                Link(destination: URL(string: "mailto:\(Config.supportEmail)")!) {
+                Button {
+                    if let url = URL(string: "mailto:\(Config.supportEmail)") {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
                     Label("Contact Support", systemImage: "envelope")
                         .foregroundColor(.miltonText)
                 }
@@ -109,34 +172,123 @@ struct ProfileView: View {
     // MARK: - Unauthenticated
 
     private var unauthenticatedContent: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "person.circle")
-                .font(.system(size: 60))
-                .foregroundColor(.miltonSecondary.opacity(0.3))
+        ScrollView {
+            VStack(spacing: 24) {
+                Image(systemName: "person.circle")
+                    .font(.system(size: 60))
+                    .foregroundColor(.miltonSecondary.opacity(0.3))
 
-            VStack(spacing: 8) {
-                Text("You're not signed in")
-                    .font(.miltonTitle)
-                    .foregroundColor(.miltonText)
-                Text("Sign in to manage bookmarks, notifications, and your reading history.")
+                VStack(spacing: 8) {
+                    Text("You're not signed in")
+                        .font(.miltonTitle)
+                        .foregroundColor(.miltonText)
+                    Text("Sign in to manage bookmarks, notifications, and your reading history.")
+                        .font(.miltonCaption)
+                        .foregroundColor(.miltonSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+
+                Button("Sign In") { showLoginPrompt = true }
+                    .miltonPrimaryButton()
+                    .padding(.horizontal, 48)
+
+                readingHistorySection
+                    .padding(.top, 8)
+
+                Text("v\(appVersion)")
                     .font(.miltonCaption)
-                    .foregroundColor(.miltonSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                    .foregroundColor(.miltonSecondary.opacity(0.6))
+                    .padding(.top, 16)
             }
-
-            Button("Sign In") { showLoginPrompt = true }
-                .miltonPrimaryButton()
-                .padding(.horizontal, 48)
-
-            Text("v\(appVersion)")
-                .font(.miltonCaption)
-                .foregroundColor(.miltonSecondary.opacity(0.6))
-                .padding(.top, 40)
+            .padding(.top, 60)
+            .padding(.bottom, 40)
         }
     }
 
+    private var readingHistorySection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // In progress
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Pick Up Where You Left Off")
+                    .font(.miltonLabel)
+                    .foregroundColor(.miltonSecondary)
+                    .padding(.horizontal, 16)
+
+                if inProgressArticles.isEmpty {
+                    Text("No articles in progress")
+                        .font(.miltonCaption)
+                        .foregroundColor(.miltonSecondary.opacity(0.6))
+                        .padding(.horizontal, 16)
+                } else {
+                    ForEach(inProgressArticles.prefix(listCap)) { record in
+                        NavigationLink {
+                            ReadingResumeView(record: record)
+                        } label: {
+                            ReadingRecordRow(record: record)
+                                .padding(.horizontal, 16)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if inProgressArticles.count > listCap {
+                        NavigationLink {
+                            ReadingHistoryListView(title: "In Progress", records: inProgressArticles)
+                        } label: {
+                            Text("See All (\(inProgressArticles.count))")
+                                .font(.miltonCaption)
+                                .foregroundColor(.miltonPrimary)
+                                .padding(.horizontal, 16)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            // Recently read
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Recently Read")
+                    .font(.miltonLabel)
+                    .foregroundColor(.miltonSecondary)
+                    .padding(.horizontal, 16)
+
+                if recentlyReadArticles.isEmpty {
+                    Text("Articles you finish will appear here")
+                        .font(.miltonCaption)
+                        .foregroundColor(.miltonSecondary.opacity(0.6))
+                        .padding(.horizontal, 16)
+                } else {
+                    ForEach(recentlyReadArticles.prefix(listCap)) { record in
+                        NavigationLink {
+                            ReadingResumeView(record: record)
+                        } label: {
+                            ReadingRecordRow(record: record)
+                                .padding(.horizontal, 16)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if recentlyReadArticles.count > listCap {
+                        NavigationLink {
+                            ReadingHistoryListView(title: "Recently Read", records: recentlyReadArticles)
+                        } label: {
+                            Text("See All (\(recentlyReadArticles.count))")
+                                .font(.miltonCaption)
+                                .foregroundColor(.miltonPrimary)
+                                .padding(.horizontal, 16)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     // MARK: - Helpers
+
+    private func loadReadingHistory() {
+        inProgressArticles = ReadingProgressService.shared.inProgress
+        recentlyReadArticles = ReadingProgressService.shared.recentlyCompleted
+    }
 
     private func roleBadge(_ role: UserRole) -> some View {
         Text(role == .staff ? "Staff" : "Reader")
@@ -153,5 +305,92 @@ struct ProfileView: View {
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+}
+
+// MARK: - Reading Record Row
+
+struct ReadingRecordRow: View {
+    let record: ReadingRecord
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.title)
+                    .font(.miltonBody)
+                    .foregroundColor(.miltonText)
+                    .lineLimit(2)
+                Text(record.author)
+                    .font(.miltonCaption)
+                    .foregroundColor(.miltonSecondary)
+            }
+            Spacer()
+            VStack(spacing: 3) {
+                CircularProgressRing(progress: record.progress, size: 28, lineWidth: 3)
+                if !record.isCompleted {
+                    Text("~\(Int(record.progress * 100))%")
+                        .font(.system(size: 10))
+                        .foregroundColor(.miltonSecondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Reading History List (See All)
+
+struct ReadingHistoryListView: View {
+    let title: String
+    let records: [ReadingRecord]
+
+    var body: some View {
+        List {
+            ForEach(records) { record in
+                NavigationLink {
+                    ReadingResumeView(record: record)
+                } label: {
+                    ReadingRecordRow(record: record)
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.miltonBackground)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.miltonSurface, for: .navigationBar)
+    }
+}
+
+// MARK: - Reading Resume View
+
+struct ReadingResumeView: View {
+    let record: ReadingRecord
+    @State private var article: Article?
+    @State private var isLoading = true
+
+    var body: some View {
+        ZStack {
+            Color.miltonBackground.ignoresSafeArea()
+            if let article {
+                ArticleDetailView(
+                    article: article,
+                    initialScrollOffset: record.isCompleted ? 0 : record.scrollOffset
+                )
+            } else if isLoading {
+                VStack { Spacer(); ProgressView(); Spacer() }
+            } else {
+                // Fallback if article is no longer in the feed
+                WebPageView(url: record.articleURL)
+                    .navigationTitle(record.title)
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+        }
+        .task {
+            do {
+                article = try await ArticleService.shared.fetchArticle(id: record.id)
+            } catch {}
+            isLoading = false
+        }
     }
 }

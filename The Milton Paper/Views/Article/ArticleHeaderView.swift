@@ -1,7 +1,10 @@
 import SwiftUI
 
+private let kArticleHorizontalPadding: CGFloat = 24
+
 struct ArticleHeaderView: View {
     let article: Article
+    var width: CGFloat = UIScreen.main.bounds.width
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -31,13 +34,12 @@ struct ArticleHeaderView: View {
                     .font(.miltonHeadline)
                     .foregroundColor(.miltonText)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Byline
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("By \(article.author)")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.miltonText)
+                        bylineView(for: article.author)
                         HStack(spacing: 6) {
                             Text(article.publishedDate.miltonFormatted)
                             Text("·")
@@ -51,7 +53,33 @@ struct ArticleHeaderView: View {
                 Divider()
                     .background(Color.miltonSecondary.opacity(0.2))
             }
-            .padding(.horizontal, 36)
+            .padding(.horizontal, kArticleHorizontalPadding)
+        }
+        .frame(width: width, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func bylineView(for authorString: String) -> some View {
+        let authors = authorString.components(separatedBy: " and ")
+        HStack(spacing: 0) {
+            Text("By ")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.miltonText)
+            ForEach(authors.indices, id: \.self) { i in
+                NavigationLink {
+                    AuthorProfileView(author: authors[i])
+                } label: {
+                    Text(authors[i])
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.miltonPrimary)
+                }
+                .buttonStyle(.plain)
+                if i < authors.count - 1 {
+                    Text(" and ")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.miltonText)
+                }
+            }
         }
     }
 

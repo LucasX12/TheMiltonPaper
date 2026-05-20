@@ -5,7 +5,8 @@ struct ArticleFeedView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var selectedArticle: Article?
     @State private var showLoginPrompt = false
-    @State private var categoryIndex = 0
+    @State private var categoryIndex = 1
+    @State private var showAbout = false
 
     var body: some View {
         NavigationStack {
@@ -22,13 +23,26 @@ struct ArticleFeedView: View {
                     feedContent
                 }
             }
-            .navigationTitle("The Milton Paper")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.miltonSurface, for: .navigationBar)
-            .searchable(text: $viewModel.searchQuery, prompt: "Search articles")
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Button {
+                        showAbout = true
+                    } label: {
+                        Text("The Milton Paper")
+                            .font(.custom("OldEnglishTextMT", size: 28))
+                            .foregroundColor(.miltonPrimary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             .task { await viewModel.loadArticles() }
             .navigationDestination(item: $selectedArticle) { article in
                 ArticleDetailView(article: article)
+            }
+            .navigationDestination(isPresented: $showAbout) {
+                AboutView()
             }
             .sheet(isPresented: $showLoginPrompt) {
                 LoginView()
@@ -59,42 +73,45 @@ struct ArticleFeedView: View {
 
     @ViewBuilder
     private func categoryPage(for category: String) -> some View {
-        let pageArticles = self.pageArticles(for: category)
-
-        if pageArticles.isEmpty {
-            emptyState
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        if category == "Wordle" {
+            WordlePageView()
         } else {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    if let featured = pageArticles.first {
-                        FeaturedArticleView(
-                            article: featured,
-                            onBookmark: authViewModel.isAuthenticated
-                                ? { Task { await toggleBookmark(featured) } }
-                                : { showLoginPrompt = true }
-                        )
-                        .padding(.horizontal, 16)
-                        .onTapGesture { selectedArticle = featured }
-                    }
-
-                    ForEach(Array(pageArticles.dropFirst().enumerated()), id: \.element.id) { index, article in
-                        cardView(for: article, at: index)
+            let pageArticles = self.pageArticles(for: category)
+            if pageArticles.isEmpty {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        if let featured = pageArticles.first {
+                            FeaturedArticleView(
+                                article: featured,
+                                onBookmark: authViewModel.isAuthenticated
+                                    ? { Task { await toggleBookmark(featured) } }
+                                    : { showLoginPrompt = true }
+                            )
                             .padding(.horizontal, 16)
-                            .onTapGesture { selectedArticle = article }
-                    }
+                            .onTapGesture { selectedArticle = featured }
+                        }
 
-                    Spacer(minLength: 24)
+                        ForEach(Array(pageArticles.dropFirst().enumerated()), id: \.element.id) { index, article in
+                            cardView(for: article, at: index)
+                                .padding(.horizontal, 16)
+                                .onTapGesture { selectedArticle = article }
+                        }
+
+                        Spacer(minLength: 24)
+                    }
+                    .padding(.top, 12)
                 }
-                .padding(.top, 12)
+                .refreshable { await viewModel.refresh() }
             }
-            .refreshable { await viewModel.refresh() }
         }
     }
 
     private func pageArticles(for category: String) -> [Article] {
         let base = viewModel.filteredArticles
-        guard category != "All" else { return base }
+        if category == "Recent" { return Array(base.prefix(15)) }
         return base.filter { $0.category.lowercased() == category.lowercased() }
     }
 

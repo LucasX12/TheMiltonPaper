@@ -1,8 +1,10 @@
 import Foundation
 import Combine
+import FirebaseAuth
+import FirebaseCore
+import GoogleSignIn
+import UIKit
 
-// Mock authentication service backed by UserDefaults.
-// Replace with a Firebase-backed implementation once FirebaseAuth is configured.
 @MainActor
 final class AuthService: ObservableObject {
     static let shared = AuthService()
@@ -10,111 +12,105 @@ final class AuthService: ObservableObject {
     @Published private(set) var currentUser: AppUser?
     @Published private(set) var isAuthenticated = false
 
-    private let userDefaultsKey = "miltonpaper.currentUser"
-    private let usersStoreKey   = "miltonpaper.usersStore"
+    private var stateListener: AuthStateDidChangeListenerHandle?
 
     init() {
-        restoreSession()
+        stateListener = Auth.auth().addStateDidChangeListener { [weak self] _, firebaseUser in
+            Task { @MainActor [weak self] in
+                self?.currentUser = firebaseUser.map { AppUser(from: $0) }
+                self?.isAuthenticated = firebaseUser != nil
+            }
+        }
     }
 
-    // MARK: - Public
+    // MARK: - Email / Password
 
     func signIn(email: String, password: String) async throws {
-        try await Task.sleep(nanoseconds: 600_000_000) // simulate network latency
-        guard let user = storedUser(for: email) else {
-            throw AuthError.userNotFound
-        }
-        persist(user: user)
+        try await Auth.auth().signIn(withEmail: email, password: password)
     }
 
     func signUp(email: String, password: String, displayName: String) async throws {
-        try await Task.sleep(nanoseconds: 800_000_000)
-        if storedUser(for: email) != nil {
-            throw AuthError.emailAlreadyInUse
-        }
-        let newUser = AppUser(
-            uid: UUID().uuidString,
-            email: email,
-            displayName: displayName,
-            role: .reader,
-            joinedDate: Date(),
-            bookmarkedArticleIDs: [],
-            notificationsEnabled: true,
-            notificationTopics: [Config.topicNewArticles]
-        )
-        storeUser(newUser)
-        persist(user: newUser)
+        let result = try await Auth.auth().createUser(withEmail: email, password: password)
+        let request = result.user.createProfileChangeRequest()
+        request.displayName = displayName
+        try await request.commitChanges()
     }
 
     func signOut() throws {
-        currentUser = nil
-        isAuthenticated = false
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+        try Auth.auth().signOut()
+        GIDSignIn.sharedInstance.signOut()
     }
 
     func sendPasswordReset(email: String) async throws {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        // Firebase: Auth.auth().sendPasswordReset(withEmail: email)
-        // Mock: no-op — in real use, Firebase handles delivery
+        try await Auth.auth().sendPasswordReset(withEmail: email)
     }
+
+    // MARK: - Google Sign-In
+
+    func signInWithGoogle() async throws {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw AuthError.configurationError
+        }
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+
+        guard
+            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+            let rootVC = windowScene.windows.first?.rootViewController
+        else {
+            throw AuthError.googleSignInFailed
+        }
+
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw AuthError.googleSignInFailed
+        }
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+        try await Auth.auth().signIn(with: credential)
+    }
+
+    // MARK: - Local state update (used by FirestoreService)
 
     func updateCurrentUser(_ user: AppUser) {
-        storeUser(user)
-        persist(user: user)
-    }
-
-    // MARK: - Private
-
-    private func restoreSession() {
-        guard
-            let data = UserDefaults.standard.data(forKey: userDefaultsKey),
-            let user = try? JSONDecoder().decode(AppUser.self, from: data)
-        else { return }
         currentUser = user
-        isAuthenticated = true
-    }
-
-    private func persist(user: AppUser) {
-        currentUser = user
-        isAuthenticated = true
-        if let data = try? JSONEncoder().encode(user) {
-            UserDefaults.standard.set(data, forKey: userDefaultsKey)
-        }
-    }
-
-    private func storedUser(for email: String) -> AppUser? {
-        guard
-            let data = UserDefaults.standard.data(forKey: usersStoreKey),
-            let dict = try? JSONDecoder().decode([String: AppUser].self, from: data)
-        else { return nil }
-        return dict[email]
-    }
-
-    private func storeUser(_ user: AppUser) {
-        var dict: [String: AppUser] = [:]
-        if let data = UserDefaults.standard.data(forKey: usersStoreKey),
-           let existing = try? JSONDecoder().decode([String: AppUser].self, from: data) {
-            dict = existing
-        }
-        dict[user.email] = user
-        if let data = try? JSONEncoder().encode(dict) {
-            UserDefaults.standard.set(data, forKey: usersStoreKey)
-        }
     }
 }
+
+// MARK: - AppUser from Firebase user
+
+private extension AppUser {
+    init(from firebaseUser: FirebaseAuth.User) {
+        self.uid = firebaseUser.uid
+        self.email = firebaseUser.email ?? ""
+        self.displayName = firebaseUser.displayName ?? "Reader"
+        self.role = .reader
+        self.joinedDate = firebaseUser.metadata.creationDate ?? Date()
+        self.bookmarkedArticleIDs = []
+        self.notificationsEnabled = true
+        self.notificationTopics = [Config.topicNewArticles]
+    }
+}
+
+// MARK: - Errors
 
 enum AuthError: LocalizedError {
     case userNotFound
     case emailAlreadyInUse
     case weakPassword
     case invalidEmail
+    case configurationError
+    case googleSignInFailed
 
     var errorDescription: String? {
         switch self {
-        case .userNotFound:      return "No account found with that email address."
-        case .emailAlreadyInUse: return "An account with this email already exists."
-        case .weakPassword:      return "Password must be at least 6 characters."
-        case .invalidEmail:      return "Please enter a valid email address."
+        case .userNotFound:        return "No account found with that email address."
+        case .emailAlreadyInUse:   return "An account with this email already exists."
+        case .weakPassword:        return "Password must be at least 6 characters."
+        case .invalidEmail:        return "Please enter a valid email address."
+        case .configurationError:  return "Google Sign-In is not configured. Please re-download GoogleService-Info.plist with Google Sign-In enabled."
+        case .googleSignInFailed:  return "Google Sign-In failed. Please try again."
         }
     }
 }

@@ -1,5 +1,7 @@
 import UIKit
 import UserNotifications
+import FirebaseCore
+import GoogleSignIn
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
@@ -7,9 +9,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        FirebaseApp.configure()
         UNUserNotificationCenter.current().delegate = self
-        // Firebase.configure() — uncomment after adding the Firebase SDK
         return true
+    }
+
+    // Required for Google Sign-In to redirect back to the app after browser authentication
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        return GIDSignIn.sharedInstance.handle(url)
     }
 
     // MARK: - APNs
@@ -18,7 +25,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
         print("[APNs] Device token: \(token)")
-        // Messaging.messaging().apnsToken = deviceToken
         NotificationService.shared.registerFCMToken(token)
     }
 

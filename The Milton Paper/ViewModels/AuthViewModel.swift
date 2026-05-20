@@ -55,6 +55,18 @@ final class AuthViewModel: ObservableObject {
         isLoading = false
     }
 
+    func signInWithGoogle() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            try await authService.signInWithGoogle()
+            showLoginSheet = false
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
     func signOut() {
         do {
             try authService.signOut()

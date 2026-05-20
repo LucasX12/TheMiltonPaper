@@ -40,7 +40,7 @@ struct ArticleBodyView: UIViewRepresentable {
                     font-size: 17px;
                     line-height: 1.7;
                     color: #1C1C1E;
-                    padding: 0 36px 40px;
+                    padding: 0 24px 40px;
                     background: transparent;
                     word-wrap: break-word;
                     overflow-wrap: break-word;
@@ -51,6 +51,9 @@ struct ArticleBodyView: UIViewRepresentable {
                     color: #1A2744;
                     margin: 24px 0 12px;
                     text-align: left;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                    max-width: 100%;
                 }
                 h2 { font-size: 20px; }
                 h3 { font-size: 17px; }
