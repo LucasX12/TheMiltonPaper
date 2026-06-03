@@ -17,15 +17,17 @@ struct LoginView: View {
                     VStack(spacing: 32) {
                         // Header
                         VStack(spacing: 8) {
-                            Image(systemName: "newspaper.fill")
-                                .font(.system(size: 40))
+                            Text("The Milton Paper")
+                                .font(.custom("OldEnglishTextMT", size: 36))
                                 .foregroundColor(.miltonPrimary)
-                            Text("Welcome back")
-                                .font(.miltonHeadline)
-                                .foregroundColor(.miltonText)
-                            Text("Sign in to your Milton Paper account")
+                            Rectangle()
+                                .fill(Color.miltonPrimary.opacity(0.2))
+                                .frame(height: 1)
+                                .padding(.horizontal, 20)
+                            Text("Sign in to your account")
                                 .font(.miltonCaption)
                                 .foregroundColor(.miltonSecondary)
+                                .padding(.top, 2)
                         }
                         .padding(.top, 48)
 
@@ -57,12 +59,14 @@ struct LoginView: View {
                             Button {
                                 Task { await authViewModel.signIn(email: email, password: password) }
                             } label: {
-                                Group {
+                                HStack {
+                                    Spacer(minLength: 0)
                                     if authViewModel.isLoading {
                                         ProgressView().tint(.white)
                                     } else {
                                         Text("Sign In")
                                     }
+                                    Spacer(minLength: 0)
                                 }
                                 .miltonPrimaryButton()
                             }
@@ -79,9 +83,26 @@ struct LoginView: View {
                                 Task { await authViewModel.signInWithGoogle() }
                             } label: {
                                 HStack(spacing: 10) {
-                                    Image(systemName: "globe")
-                                        .font(.system(size: 16, weight: .medium))
+                                    GoogleGIcon(size: 20)
                                     Text("Continue with Google")
+                                        .font(.system(size: 16, weight: .medium))
+                                }
+                                .foregroundColor(.miltonText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.miltonSurface)
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.miltonSecondary.opacity(0.3), lineWidth: 1))
+                            }
+                            .disabled(authViewModel.isLoading)
+
+                            Button {
+                                Task { await authViewModel.signInWithApple() }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "apple.logo")
+                                        .font(.system(size: 17, weight: .medium))
+                                    Text("Continue with Apple")
                                         .font(.system(size: 16, weight: .medium))
                                 }
                                 .foregroundColor(.miltonText)
@@ -128,6 +149,19 @@ struct LoginView: View {
                 if authenticated { dismiss() }
             }
         }
+    }
+}
+
+// MARK: - Google G logo
+
+private struct GoogleGIcon: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image("google_logo")
+            .resizable()
+            .interpolation(.high)
+            .frame(width: size, height: size)
     }
 }
 

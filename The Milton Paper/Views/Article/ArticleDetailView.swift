@@ -74,6 +74,7 @@ struct ArticleDetailView: View {
     @State private var lastScrollOffset: CGFloat = 0
     @State private var scrollView: UIScrollView?
     @State private var hasRestoredScroll = false
+    @State private var currentScrollOffset: CGFloat = 0
 
     let initialScrollOffset: CGFloat
 
@@ -92,9 +93,10 @@ struct ArticleDetailView: View {
                     ZStack(alignment: .top) {
                         ScrollProgressTracker(
                             onScroll: { progress, offset in
+                                currentScrollOffset = offset
                                 if progress > readingProgress {
                                     readingProgress = progress
-                                    lastScrollOffset = offset  // track the furthest point reached
+                                    lastScrollOffset = offset
                                 }
                                 if progress >= 0.99 { saveReadingProgress() }
                             },
@@ -125,6 +127,35 @@ struct ArticleDetailView: View {
                                 .padding(.vertical, 16)
                             }
 
+                            // Related articles
+                            if !viewModel.relatedArticles.isEmpty {
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text("More from \(viewModel.article.category)")
+                                        .font(.miltonLabel)
+                                        .foregroundColor(.miltonSecondary)
+                                        .padding(.horizontal, 20)
+                                        .padding(.top, 20)
+                                        .padding(.bottom, 12)
+
+                                    Divider().padding(.horizontal, 20)
+
+                                    ForEach(viewModel.relatedArticles) { related in
+                                        NavigationLink(destination: ArticleDetailView(article: related)) {
+                                            RelatedArticleRow(article: related)
+                                        }
+                                        .buttonStyle(.plain)
+
+                                        if related.id != viewModel.relatedArticles.last?.id {
+                                            Divider().padding(.horizontal, 20)
+                                        }
+                                    }
+                                }
+                                .background(Color.miltonSurface)
+                                .cornerRadius(12)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 8)
+                            }
+
                             Spacer(minLength: 40)
                         }
                         .frame(width: w)
@@ -133,6 +164,25 @@ struct ArticleDetailView: View {
                 .onChange(of: webViewHeight) { _, _ in restoreScrollIfNeeded() }
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if currentScrollOffset > 300 {
+                Button {
+                    scrollView?.setContentOffset(.zero, animated: true)
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.miltonPrimary)
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                }
+                .padding(.trailing, 20)
+                .padding(.bottom, 24)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: currentScrollOffset > 300)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
@@ -155,6 +205,7 @@ struct ArticleDetailView: View {
             }
         }
         .task { await viewModel.checkBookmarkStatus() }
+        .task { await viewModel.loadRelatedArticles() }
         .sheet(isPresented: $showLoginPrompt) { LoginView() }
         .onDisappear { saveReadingProgress() }
     }
@@ -181,5 +232,44 @@ struct ArticleDetailView: View {
             progress: readingProgress,
             scrollOffset: lastScrollOffset
         )
+    }
+}
+
+// MARK: - Related article row
+
+private struct RelatedArticleRow: View {
+    let article: Article
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let thumb = article.thumbnailURL {
+                AsyncImage(url: thumb) { img in
+                    img.resizable().scaledToFill()
+                } placeholder: {
+                    Color.miltonSecondary.opacity(0.12)
+                }
+                .frame(width: 64, height: 64)
+                .cornerRadius(8)
+                .clipped()
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(article.title)
+                    .font(.miltonBody)
+                    .foregroundColor(.miltonText)
+                    .lineLimit(2)
+                Text(article.author)
+                    .font(.miltonCaption)
+                    .foregroundColor(.miltonSecondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.miltonSecondary.opacity(0.4))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 }

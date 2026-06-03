@@ -73,11 +73,21 @@ final class ArticleService {
         }
     }
 
+    func updateBookmark(id: String, isBookmarked: Bool) {
+        if let idx = cachedList.firstIndex(where: { $0.id == id }) {
+            cachedList[idx].isBookmarked = isBookmarked
+        }
+        if var article = cache[id] {
+            article.isBookmarked = isBookmarked
+            cache[id] = article
+        }
+    }
+
     // MARK: - Private
 
     private func updateCache(_ articles: [Article]) {
         cachedList = articles
-        for article in articles { cache[article.id] = article }
+        cache = Dictionary(uniqueKeysWithValues: articles.map { ($0.id, $0) })
         lastFetch = Date()
     }
 

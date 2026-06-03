@@ -1,11 +1,16 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let miltonNavigateToCategory = Notification.Name("miltonNavigateToCategory")
+    static let miltonBookmarkChanged    = Notification.Name("miltonBookmarkChanged")
+}
+
 struct ArticleFeedView: View {
     @StateObject private var viewModel = ArticleFeedViewModel()
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var selectedArticle: Article?
     @State private var showLoginPrompt = false
-    @State private var categoryIndex = 1
+    @State private var categoryIndex = 2
     @State private var showAbout = false
 
     var body: some View {
@@ -47,6 +52,21 @@ struct ArticleFeedView: View {
             .sheet(isPresented: $showLoginPrompt) {
                 LoginView()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .miltonNavigateToCategory)) { notification in
+                guard let category = notification.userInfo?["category"] as? String,
+                      let index = viewModel.categories.firstIndex(where: {
+                          $0.lowercased() == category.lowercased()
+                      }) else { return }
+                selectedArticle = nil
+                categoryIndex = index
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .miltonBookmarkChanged)) { notification in
+                guard let id = notification.userInfo?["articleID"] as? String,
+                      let isBookmarked = notification.userInfo?["isBookmarked"] as? Bool,
+                      let idx = viewModel.articles.firstIndex(where: { $0.id == id }) else { return }
+                viewModel.articles[idx].isBookmarked = isBookmarked
+                viewModel.filteredArticles = viewModel.articles
+            }
         }
     }
 
@@ -73,7 +93,9 @@ struct ArticleFeedView: View {
 
     @ViewBuilder
     private func categoryPage(for category: String) -> some View {
-        if category == "Wordle" {
+        if category == "This Week" {
+            ThisWeekView()
+        } else if category == "Mordle" {
             WordlePageView()
         } else {
             let pageArticles = self.pageArticles(for: category)
@@ -84,20 +106,24 @@ struct ArticleFeedView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         if let featured = pageArticles.first {
-                            FeaturedArticleView(
-                                article: featured,
-                                onBookmark: authViewModel.isAuthenticated
-                                    ? { Task { await toggleBookmark(featured) } }
-                                    : { showLoginPrompt = true }
-                            )
+                            Button { selectedArticle = featured } label: {
+                                FeaturedArticleView(
+                                    article: featured,
+                                    onBookmark: authViewModel.isAuthenticated
+                                        ? { Task { await toggleBookmark(featured) } }
+                                        : { showLoginPrompt = true }
+                                )
+                            }
+                            .buttonStyle(.plain)
                             .padding(.horizontal, 16)
-                            .onTapGesture { selectedArticle = featured }
                         }
 
                         ForEach(Array(pageArticles.dropFirst().enumerated()), id: \.element.id) { index, article in
-                            cardView(for: article, at: index)
-                                .padding(.horizontal, 16)
-                                .onTapGesture { selectedArticle = article }
+                            Button { selectedArticle = article } label: {
+                                cardView(for: article, at: index)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 16)
                         }
 
                         Spacer(minLength: 24)

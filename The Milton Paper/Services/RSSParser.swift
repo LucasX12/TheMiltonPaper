@@ -70,7 +70,11 @@ final class RSSParser: NSObject, XMLParserDelegate {
         case "description":     currentItem["description"] = value
         case "content:encoded": currentItem["bodyHTML"] = value
         case "dc:creator", "author":
-            if currentItem["author"] == nil { currentItem["author"] = value }
+            if let existing = currentItem["author"], !existing.isEmpty {
+                currentItem["author"] = existing + " and " + value
+            } else {
+                currentItem["author"] = value
+            }
         case "pubDate":         currentItem["pubDate"] = value
         case "link":            currentItem["link"] = value
         case "guid":            if currentItem["guid"] == nil { currentItem["guid"] = value }
@@ -142,14 +146,24 @@ final class RSSParser: NSObject, XMLParserDelegate {
         // class-year tokens like '26 regardless of which apostrophe character is used.
         let afterBy = String(line.dropFirst(3))
             .replacingOccurrences(of: " & ", with: " and ")
+            .replacingOccurrences(of: ", ", with: " and ")
             .trimmingCharacters(in: .whitespaces)
         let names = afterBy
             .components(separatedBy: " and ")
             .map { part in
                 part.components(separatedBy: " ")
-                    .filter { word in
-                        !word.isEmpty &&
-                        word.unicodeScalars.allSatisfy { CharacterSet.letters.contains($0) }
+                    .compactMap { word -> String? in
+                        guard !word.isEmpty else { return nil }
+                        // Strip class-year suffix: apostrophe (any kind) followed by digits at end.
+                        // "Smith'26" → "Smith", "O'Brien" (no trailing digits) → "O'Brien"
+                        let stripped: String
+                        if let range = word.range(of: #"['\u{2018}\u{2019}][0-9]+$"#, options: .regularExpression) {
+                            stripped = String(word[..<range.lowerBound])
+                        } else {
+                            stripped = word
+                        }
+                        // Keep the word only if it contains at least one letter
+                        return stripped.contains(where: { $0.isLetter }) ? stripped : nil
                     }
                     .joined(separator: " ")
                     .trimmingCharacters(in: .whitespaces)

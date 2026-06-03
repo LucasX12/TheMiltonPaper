@@ -28,7 +28,7 @@ struct WordlePageView: View {
                     Spacer()
 
                     VStack(spacing: 2) {
-                        Text("WORDLE")
+                        Text("MORDLE")
                             .font(.custom("Georgia", size: 22).weight(.bold))
                             .foregroundColor(.miltonText)
                         if viewModel.phase == .playing {
@@ -134,7 +134,7 @@ struct WordlePageView: View {
 struct WordleCoverOverlay: View {
     let onStart: () -> Void
 
-    private let exampleLetters = ["W", "O", "R", "D", "S"]
+    private let exampleLetters = ["M", "O", "R", "D", "L"]
     private let exampleStates: [LetterState] = [.correct, .present, .absent, .empty, .empty]
 
     var body: some View {
@@ -144,7 +144,7 @@ struct WordleCoverOverlay: View {
 
             VStack(spacing: 36) {
                 VStack(spacing: 10) {
-                    Text("WORDLE")
+                    Text("MORDLE")
                         .font(.custom("Georgia", size: 42).weight(.bold))
                         .foregroundColor(.miltonText)
 
@@ -188,7 +188,8 @@ struct WordleGrid: View {
                         WordleTile(
                             letter: viewModel.grid[row][col].letter,
                             state:  viewModel.grid[row][col].state,
-                            size:   50
+                            size:   50,
+                            flipDelay: Double(col) * 0.12
                         )
                     }
                 }
@@ -203,27 +204,68 @@ struct WordleTile: View {
     let letter: String
     let state: LetterState
     let size: CGFloat
+    var flipDelay: Double = 0
+
+    @State private var revealed: LetterState
+    @State private var flipAngle: Double = 0
+    @State private var bounceScale: CGFloat = 1.0
+
+    init(letter: String, state: LetterState, size: CGFloat, flipDelay: Double = 0) {
+        self.letter = letter
+        self.state = state
+        self.size = size
+        self.flipDelay = flipDelay
+        _revealed = State(initialValue: state)
+    }
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 4)
-                .fill(backgroundColor)
+                .fill(backgroundColor(for: revealed))
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
-                        .stroke(borderColor, lineWidth: 2)
+                        .stroke(borderColor(for: revealed), lineWidth: 2)
                 )
             if !letter.isEmpty {
                 Text(letter)
                     .font(.custom("Georgia", size: size * 0.48).weight(.bold))
-                    .foregroundColor(textColor)
+                    .foregroundColor(textColor(for: revealed))
             }
         }
         .frame(width: size, height: size)
-        .animation(.easeInOut(duration: 0.15), value: state)
+        .scaleEffect(bounceScale)
+        .rotation3DEffect(.degrees(flipAngle), axis: (x: 1, y: 0, z: 0))
+        .onChange(of: letter) { newLetter in
+            // Spring pop when a letter is typed
+            guard !newLetter.isEmpty else { return }
+            withAnimation(.spring(response: 0.1, dampingFraction: 0.5)) {
+                bounceScale = 1.12
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.spring(response: 0.15, dampingFraction: 0.8)) {
+                    bounceScale = 1.0
+                }
+            }
+        }
+        .onChange(of: state) { newState in
+            guard newState == .correct || newState == .present || newState == .absent else {
+                revealed = newState
+                return
+            }
+            // Phase 1: ease-in fold to 90°
+            DispatchQueue.main.asyncAfter(deadline: .now() + flipDelay) {
+                withAnimation(.easeIn(duration: 0.2)) { flipAngle = 90 }
+            }
+            // Midpoint: swap colour, then ease-out unfold
+            DispatchQueue.main.asyncAfter(deadline: .now() + flipDelay + 0.2) {
+                revealed = newState
+                withAnimation(.easeOut(duration: 0.2)) { flipAngle = 0 }
+            }
+        }
     }
 
-    private var backgroundColor: Color {
-        switch state {
+    private func backgroundColor(for s: LetterState) -> Color {
+        switch s {
         case .correct: return Color(hex: "#538d4e")
         case .present: return Color(hex: "#b59f3b")
         case .absent:  return Color(hex: "#3a3a3c")
@@ -231,18 +273,18 @@ struct WordleTile: View {
         }
     }
 
-    private var borderColor: Color {
-        switch state {
-        case .correct:        return Color(hex: "#538d4e")
-        case .present:        return Color(hex: "#b59f3b")
-        case .absent:         return Color(hex: "#3a3a3c")
-        case .tbd:            return Color.miltonSecondary
+    private func borderColor(for s: LetterState) -> Color {
+        switch s {
+        case .correct:         return Color(hex: "#538d4e")
+        case .present:         return Color(hex: "#b59f3b")
+        case .absent:          return Color(hex: "#3a3a3c")
+        case .tbd:             return Color.miltonSecondary
         case .empty, .unknown: return Color.miltonSecondary.opacity(0.3)
         }
     }
 
-    private var textColor: Color {
-        switch state {
+    private func textColor(for s: LetterState) -> Color {
+        switch s {
         case .correct, .present, .absent: return .white
         default: return .miltonText
         }
@@ -430,6 +472,14 @@ struct WordleHelpOverlay: View {
                     .font(.miltonCaption)
                     .foregroundColor(.miltonSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Divider()
+
+                Text("Mordle is inspired by Wordle by The New York Times.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.miltonSecondary.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(24)
             .background(Color.miltonSurface)
@@ -467,6 +517,20 @@ struct WordleLeaderboardSheet: View {
 
                 if viewModel.isLoadingLeaderboard {
                     LoadingView()
+                } else if let error = viewModel.leaderboardError {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 44))
+                            .foregroundColor(.miltonSecondary.opacity(0.4))
+                        Text("Couldn't load scores")
+                            .font(.miltonTitle)
+                            .foregroundColor(.miltonSecondary)
+                        Text(error)
+                            .font(.miltonCaption)
+                            .foregroundColor(.miltonSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
                 } else if viewModel.leaderboard.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "list.bullet.clipboard")

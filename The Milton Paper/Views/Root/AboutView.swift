@@ -180,7 +180,7 @@ struct AboutView: View {
                         .foregroundColor(.miltonPrimary)
                         .multilineTextAlignment(.center)
                         .tracking(1.5)
-                        .padding(.top, 28)
+                        .padding(.top, 12)
                         .padding(.bottom, 8)
 
                 case .body(let text):

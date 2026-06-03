@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>959446451235-bbkqqcgbqou7v3m3hvusin6ubkj2je6e.apps.googleusercontent.com</string>
+	<string>959446451235-4i72a9h8is2d710m392qu5ej406jparc.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.959446451235-bbkqqcgbqou7v3m3hvusin6ubkj2je6e</string>
+	<string>com.googleusercontent.apps.959446451235-4i72a9h8is2d710m392qu5ej406jparc</string>
 	<key>API_KEY</key>
 	<string>AIzaSyCqCASS0zP44QMWVxX3fWwu5QWiyRTuOXU</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>Milton-Academy.The-Milton-Paper</string>
+	<string>com.xia.themiltonpaper</string>
 	<key>PROJECT_ID</key>
 	<string>the-milton-paper-3f71c</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:959446451235:ios:9a323a85e9c45c75779d96</string>
+	<string>1:959446451235:ios:20c96515b8ad2cdd779d96</string>
 </dict>
 </plist>

@@ -14,11 +14,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         return true
     }
 
-    // Required for Google Sign-In to redirect back to the app after browser authentication
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        return GIDSignIn.sharedInstance.handle(url)
-    }
-
     // MARK: - APNs
 
     func application(_ application: UIApplication,

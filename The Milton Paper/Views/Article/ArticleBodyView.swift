@@ -5,7 +5,7 @@ struct ArticleBodyView: UIViewRepresentable {
     let htmlContent: String
     var baseURL: URL?
     @Binding var contentHeight: CGFloat
-    var viewWidth: CGFloat = UIScreen.main.bounds.width
+    var viewWidth: CGFloat = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.width ?? 393
 
     func makeCoordinator() -> Coordinator {
         Coordinator(contentHeight: $contentHeight)

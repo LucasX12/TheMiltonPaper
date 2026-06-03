@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import UIKit
+import FirebaseFirestore
 
 // MARK: - Types
 
@@ -50,6 +52,7 @@ final class WordleViewModel: ObservableObject {
     @Published var errorMessage: String? = nil
     @Published var leaderboard: [WordleScore] = []
     @Published var isLoadingLeaderboard = false
+    @Published var leaderboardError: String?
 
     let todayWord: String
     let dateString: String
@@ -64,6 +67,22 @@ final class WordleViewModel: ObservableObject {
             (0..<Self.wordLength).map { _ in LetterCell() }
         }
         restoreState()
+
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.stopTimer() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard self?.phase == .playing else { return }
+                self?.startTimer()
+            }
+        }
     }
 
     // MARK: - Game Control
@@ -92,6 +111,10 @@ final class WordleViewModel: ObservableObject {
         let word = grid[currentRow].map { $0.letter }.joined()
         guard word.count == Self.wordLength else {
             showError("Word too short")
+            return
+        }
+        guard Self.validWordSet.contains(word.lowercased()) else {
+            showError("Not in word list")
             return
         }
         evaluateGuess(word)
@@ -283,39 +306,57 @@ final class WordleViewModel: ObservableObject {
 
     func loadLeaderboard() async {
         isLoadingLeaderboard = true
-        let key = "wordle.leaderboard.\(dateString)"
-        if let data = UserDefaults.standard.array(forKey: key) as? [[String: Any]] {
-            leaderboard = data.compactMap { d -> WordleScore? in
+        leaderboardError = nil
+        do {
+            let snapshot = try await Firestore.firestore()
+                .collection("wordleScores")
+                .whereField("date", isEqualTo: dateString)
+                .getDocuments()
+            leaderboard = snapshot.documents.compactMap { doc -> WordleScore? in
+                let d = doc.data()
                 guard
-                    let id          = d["id"]          as? String,
                     let uid         = d["uid"]         as? String,
                     let displayName = d["displayName"] as? String,
                     let tries       = d["tries"]       as? Int,
                     let seconds     = d["seconds"]     as? Int,
                     let date        = d["date"]        as? String
                 else { return nil }
-                return WordleScore(id: id, uid: uid, displayName: displayName,
+                return WordleScore(id: doc.documentID, uid: uid, displayName: displayName,
                                    tries: tries, seconds: seconds, date: date)
             }
+            leaderboard.sort { ($0.tries, $0.seconds) < ($1.tries, $1.seconds) }
+        } catch {
+            leaderboardError = error.localizedDescription
         }
         isLoadingLeaderboard = false
     }
 
     func submitScore(uid: String, displayName: String) {
         let tries = phase == .won ? currentRow : 7
-        let score = WordleScore(id: UUID().uuidString, uid: uid,
+        let docID = "\(dateString)_\(uid)"
+        let score = WordleScore(id: docID, uid: uid,
                                 displayName: displayName, tries: tries,
                                 seconds: elapsedSeconds, date: dateString)
         leaderboard.removeAll { $0.uid == uid }
         leaderboard.append(score)
-        leaderboard.sort { ($0.tries * 100_000 + $0.seconds) < ($1.tries * 100_000 + $1.seconds) }
+        leaderboard.sort { ($0.tries, $0.seconds) < ($1.tries, $1.seconds) }
 
-        let key  = "wordle.leaderboard.\(dateString)"
-        let data = leaderboard.map { s -> [String: Any] in
-            ["id": s.id, "uid": s.uid, "displayName": s.displayName,
-             "tries": s.tries, "seconds": s.seconds, "date": s.date]
+        Task {
+            do {
+                try await Firestore.firestore()
+                    .collection("wordleScores")
+                    .document(docID)
+                    .setData([
+                        "uid": uid,
+                        "displayName": displayName,
+                        "tries": tries,
+                        "seconds": elapsedSeconds,
+                        "date": dateString
+                    ])
+            } catch {
+                print("Score submit error: \(error)")
+            }
         }
-        UserDefaults.standard.set(data, forKey: key)
     }
 
     // MARK: - Word List (daily answer pool — 1500+ common words)

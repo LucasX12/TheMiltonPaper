@@ -11,7 +11,7 @@ final class ArticleFeedViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var searchQuery = ""
 
-    let categories = ["Wordle", "Recent", "News", "Opinion", "Sports", "Editorial"]
+    let categories = ["This Week", "Mordle", "Recent", "News", "Opinion", "Sports", "Editorial"]
 
     private let service = ArticleService.shared
     private var cancellables = Set<AnyCancellable>()

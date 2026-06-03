@@ -16,6 +16,7 @@ enum Config {
     static let squarespaceAPIKey = ""
     static let squarespaceCollectionID = ""
 
+
     static let appName = "The Milton Paper"
     static let supportEmail = "themiltonpaper40@gmail.com"
 

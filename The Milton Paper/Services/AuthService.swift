@@ -4,6 +4,8 @@ import FirebaseAuth
 import FirebaseCore
 import GoogleSignIn
 import UIKit
+import AuthenticationServices
+import CryptoKit
 
 @MainActor
 final class AuthService: ObservableObject {
@@ -68,7 +70,66 @@ final class AuthService: ObservableObject {
             withIDToken: idToken,
             accessToken: result.user.accessToken.tokenString
         )
+        let authResult = try await Auth.auth().signIn(with: credential)
+        // Sync display name from Google profile if Firebase doesn't have one yet
+        if let googleName = result.user.profile?.name,
+           authResult.user.displayName == nil || authResult.user.displayName!.isEmpty {
+            let req = authResult.user.createProfileChangeRequest()
+            req.displayName = googleName
+            try? await req.commitChanges()
+        }
+    }
+
+    // MARK: - Apple Sign-In
+
+    func signInWithApple() async throws {
+        let nonce = randomNonceString()
+        let hashedNonce = sha256(nonce)
+        let appleCredential = try await requestAppleCredential(hashedNonce: hashedNonce)
+        guard let idToken = appleCredential.identityToken,
+              let idTokenString = String(data: idToken, encoding: .utf8) else {
+            throw AuthError.appleSignInFailed
+        }
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: idTokenString,
+            rawNonce: nonce,
+            fullName: appleCredential.fullName
+        )
         try await Auth.auth().signIn(with: credential)
+    }
+
+    private func requestAppleCredential(hashedNonce: String) async throws -> ASAuthorizationAppleIDCredential {
+        try await withCheckedThrowingContinuation { continuation in
+            let coordinator = AppleSignInCoordinator(continuation: continuation)
+            AppleSignInCoordinator.active = coordinator
+
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = hashedNonce
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = coordinator
+            controller.presentationContextProvider = coordinator
+            controller.performRequests()
+        }
+    }
+
+    private func randomNonceString(length: Int = 32) -> String {
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remaining = length
+        while remaining > 0 {
+            var randoms = [UInt8](repeating: 0, count: 16)
+            SecRandomCopyBytes(kSecRandomDefault, randoms.count, &randoms)
+            for r in randoms where remaining > 0 {
+                if r < charset.count { result.append(charset[Int(r)]); remaining -= 1 }
+            }
+        }
+        return result
+    }
+
+    private func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8)).compactMap { String(format: "%02x", $0) }.joined()
     }
 
     // MARK: - Local state update (used by FirestoreService)
@@ -102,6 +163,7 @@ enum AuthError: LocalizedError {
     case invalidEmail
     case configurationError
     case googleSignInFailed
+    case appleSignInFailed
 
     var errorDescription: String? {
         switch self {
@@ -111,6 +173,42 @@ enum AuthError: LocalizedError {
         case .invalidEmail:        return "Please enter a valid email address."
         case .configurationError:  return "Google Sign-In is not configured. Please re-download GoogleService-Info.plist with Google Sign-In enabled."
         case .googleSignInFailed:  return "Google Sign-In failed. Please try again."
+        case .appleSignInFailed:   return "Apple Sign-In failed. Please try again."
         }
+    }
+}
+
+// MARK: - Apple Sign-In coordinator
+
+private final class AppleSignInCoordinator: NSObject,
+    ASAuthorizationControllerDelegate,
+    ASAuthorizationControllerPresentationContextProviding {
+
+    static var active: AppleSignInCoordinator?
+
+    private let continuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>
+
+    init(continuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>) {
+        self.continuation = continuation
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first ?? UIWindow()
+    }
+
+    func authorizationController(controller: ASAuthorizationController,
+                                  didCompleteWithAuthorization authorization: ASAuthorization) {
+        Self.active = nil
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            continuation.resume(throwing: AuthError.appleSignInFailed)
+            return
+        }
+        continuation.resume(returning: credential)
+    }
+
+    func authorizationController(controller: ASAuthorizationController,
+                                  didCompleteWithError error: Error) {
+        Self.active = nil
+        continuation.resume(throwing: error)
     }
 }

@@ -1,10 +1,11 @@
 import SwiftUI
+import UIKit
 
 private let kArticleHorizontalPadding: CGFloat = 24
 
 struct ArticleHeaderView: View {
     let article: Article
-    var width: CGFloat = UIScreen.main.bounds.width
+    var width: CGFloat = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.width ?? 393
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -29,6 +30,13 @@ struct ArticleHeaderView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 TagChipView(category: article.category)
+                    .onTapGesture {
+                        NotificationCenter.default.post(
+                            name: .miltonNavigateToCategory,
+                            object: nil,
+                            userInfo: ["category": article.category]
+                        )
+                    }
 
                 Text(article.title)
                     .font(.miltonHeadline)

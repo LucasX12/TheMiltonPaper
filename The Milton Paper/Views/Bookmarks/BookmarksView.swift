@@ -5,6 +5,7 @@ struct BookmarksView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var selectedArticle: Article?
     @State private var showLoginPrompt = false
+    @State private var pendingDeleteOffsets: IndexSet?
 
     var body: some View {
         NavigationStack {
@@ -33,6 +34,20 @@ struct BookmarksView: View {
                 ArticleDetailView(article: article)
             }
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
+            .alert("Remove Bookmark?", isPresented: Binding(
+                get: { pendingDeleteOffsets != nil },
+                set: { if !$0 { pendingDeleteOffsets = nil } }
+            )) {
+                Button("Remove", role: .destructive) {
+                    if let offsets = pendingDeleteOffsets {
+                        Task { await viewModel.removeBookmarks(at: offsets) }
+                        pendingDeleteOffsets = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { pendingDeleteOffsets = nil }
+            } message: {
+                Text("This article will be removed from your bookmarks.")
+            }
         }
     }
 
@@ -46,7 +61,7 @@ struct BookmarksView: View {
                     .onTapGesture { selectedArticle = article }
             }
             .onDelete { offsets in
-                Task { await viewModel.removeBookmarks(at: offsets) }
+                pendingDeleteOffsets = offsets
             }
         }
         .listStyle(.plain)
