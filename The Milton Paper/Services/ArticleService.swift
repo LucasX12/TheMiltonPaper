@@ -63,17 +63,6 @@ final class ArticleService {
         return found
     }
 
-    func searchArticles(query: String) async throws -> [Article] {
-        let articles = try await fetchArticles()
-        let q = query.lowercased()
-        return articles.filter {
-            $0.title.lowercased().contains(q) ||
-            $0.summary.lowercased().contains(q) ||
-            $0.author.lowercased().contains(q) ||
-            $0.category.lowercased().contains(q)
-        }
-    }
-
     func updateBookmark(id: String, isBookmarked: Bool) {
         if let idx = cachedList.firstIndex(where: { $0.id == id }) {
             cachedList[idx].isBookmarked = isBookmarked

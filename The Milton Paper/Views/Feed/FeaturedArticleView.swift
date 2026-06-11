@@ -6,34 +6,34 @@ struct FeaturedArticleView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Hero image
-            ZStack(alignment: .bottomLeading) {
-                if let url = article.thumbnailURL {
+            // Hero image — omitted entirely when the article has no photo
+            if let url = article.thumbnailURL {
+                ZStack(alignment: .bottomLeading) {
                     RemoteImage(url: url, targetWidth: 400) {
                         heroPlaceholder
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 200)
                     .clipped()
-                } else {
-                    heroPlaceholder
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
+
+                    // Gradient overlay
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.55)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+
+                    TagChipView(category: article.category, style: .solid)
+                        .padding(14)
                 }
-
-                // Gradient overlay
-                LinearGradient(
-                    colors: [.clear, .black.opacity(0.55)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-
-                TagChipView(category: article.category, style: .solid)
-                    .padding(14)
             }
 
             // Content
             VStack(alignment: .leading, spacing: 8) {
+                if article.thumbnailURL == nil {
+                    TagChipView(category: article.category)
+                }
+
                 Text(article.title)
                     .font(.miltonHeadline)
                     .foregroundColor(.miltonText)

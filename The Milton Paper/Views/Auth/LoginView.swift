@@ -195,6 +195,7 @@ struct MiltonTextField: View {
 struct MiltonSecureField: View {
     let title: String
     @Binding var text: String
+    var textContentType: UITextContentType = .password
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -202,7 +203,7 @@ struct MiltonSecureField: View {
                 .font(.miltonCaption)
                 .foregroundColor(.miltonSecondary)
             SecureField(title, text: $text)
-                .textContentType(.password)
+                .textContentType(textContentType)
                 .padding(12)
                 .background(Color.miltonSurface)
                 .cornerRadius(8)

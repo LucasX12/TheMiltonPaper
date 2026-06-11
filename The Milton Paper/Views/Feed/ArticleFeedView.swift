@@ -160,12 +160,17 @@ struct ArticleFeedView: View {
 
                         if let featured = pageArticles.first {
                             Button { selectedArticle = featured } label: {
-                                FeaturedArticleView(
-                                    article: featured,
-                                    onBookmark: authViewModel.isAuthenticated
-                                        ? { Task { await toggleBookmark(featured) } }
-                                        : { showLoginPrompt = true }
-                                )
+                                if featured.thumbnailURL != nil {
+                                    FeaturedArticleView(
+                                        article: featured,
+                                        onBookmark: bookmarkAction(for: featured)
+                                    )
+                                } else {
+                                    EditorialArticleCardView(
+                                        article: featured,
+                                        onBookmark: bookmarkAction(for: featured)
+                                    )
+                                }
                             }
                             .buttonStyle(.plain)
                             .padding(.horizontal, 16)
@@ -207,19 +212,28 @@ struct ArticleFeedView: View {
 
     // MARK: - Card Style Rotation
 
-    @ViewBuilder
-    private func cardView(for article: Article, at index: Int) -> some View {
-        let bookmark: (() -> Void)? = authViewModel.isAuthenticated
+    private func bookmarkAction(for article: Article) -> (() -> Void)? {
+        authViewModel.isAuthenticated
             ? { Task { await toggleBookmark(article) } }
             : { showLoginPrompt = true }
+    }
 
-        switch index % 6 {
-        case 0:
-            WideArticleCardView(article: article, onBookmark: bookmark)
-        case 3:
+    @ViewBuilder
+    private func cardView(for article: Article, at index: Int) -> some View {
+        let bookmark = bookmarkAction(for: article)
+
+        // Articles without a photo always use the text-only editorial layout
+        if article.thumbnailURL == nil {
             EditorialArticleCardView(article: article, onBookmark: bookmark)
-        default:
-            ArticleCardView(article: article, onBookmark: bookmark)
+        } else {
+            switch index % 6 {
+            case 0:
+                WideArticleCardView(article: article, onBookmark: bookmark)
+            case 3:
+                EditorialArticleCardView(article: article, onBookmark: bookmark)
+            default:
+                ArticleCardView(article: article, onBookmark: bookmark)
+            }
         }
     }
 

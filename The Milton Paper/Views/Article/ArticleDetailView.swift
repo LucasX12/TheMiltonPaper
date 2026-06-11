@@ -170,9 +170,10 @@ struct ArticleDetailView: View {
                         .frame(width: w)
                     }
                 }
-                // Content runs to the physical top of the screen; the toolbar
-                // buttons float over it as individual glass controls.
-                .ignoresSafeArea(edges: .top)
+                // Image-led articles run to the physical top of the screen,
+                // under the floating glass toolbar buttons; text-only
+                // articles start below them so the title is never covered.
+                .ignoresSafeArea(edges: viewModel.article.thumbnailURL != nil ? Edge.Set.top : [])
                 .onChange(of: webViewHeight) { _, _ in restoreScrollIfNeeded() }
             }
         }

@@ -5,9 +5,7 @@ import Combine
 final class ArticleFeedViewModel: ObservableObject {
     @Published var articles: [Article] = []
     @Published var filteredArticles: [Article] = []
-    @Published var selectedCategory: String = "All"
     @Published var isLoading = false
-    @Published var isLoadingMore = false
     @Published var errorMessage: String?
     @Published var searchQuery = ""
 
@@ -25,18 +23,6 @@ final class ArticleFeedViewModel: ObservableObject {
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
             .sink { [weak self] _ in self?.applyFilter() }
             .store(in: &cancellables)
-
-        $selectedCategory
-            .sink { [weak self] _ in self?.applyFilter() }
-            .store(in: &cancellables)
-    }
-
-    var featuredArticle: Article? {
-        filteredArticles.first
-    }
-
-    var feedArticles: [Article] {
-        filteredArticles.count > 1 ? Array(filteredArticles.dropFirst()) : []
     }
 
     func loadArticles() async {
@@ -63,10 +49,6 @@ final class ArticleFeedViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-
-    func selectCategory(_ category: String) {
-        selectedCategory = category
     }
 
     /// Updates a single article's bookmark flag in place, preserving the
@@ -124,10 +106,6 @@ final class ArticleFeedViewModel: ObservableObject {
                 $0.summary.lowercased().contains(q) ||
                 $0.author.lowercased().contains(q)
             }
-        }
-
-        if selectedCategory != "All" {
-            base = base.filter { $0.category.lowercased() == selectedCategory.lowercased() }
         }
 
         filteredArticles = base

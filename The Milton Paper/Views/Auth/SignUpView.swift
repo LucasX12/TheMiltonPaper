@@ -34,8 +34,8 @@ struct SignUpView: View {
                         VStack(spacing: 16) {
                             MiltonTextField(title: "Display Name", text: $displayName, textContentType: .name)
                             MiltonTextField(title: "Email", text: $email, keyboardType: .emailAddress, textContentType: .emailAddress)
-                            MiltonSecureField(title: "Password", text: $password)
-                            MiltonSecureField(title: "Confirm Password", text: $confirmPassword)
+                            MiltonSecureField(title: "Password", text: $password, textContentType: .newPassword)
+                            MiltonSecureField(title: "Confirm Password", text: $confirmPassword, textContentType: .newPassword)
                         }
                         .padding(.horizontal, 24)
 

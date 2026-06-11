@@ -9,7 +9,7 @@ struct ArticleHeaderView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Hero image
+            // Hero image — articles without a photo open straight on the title
             if let url = article.thumbnailURL {
                 RemoteImage(url: url, targetWidth: width) {
                     heroPlaceholder
@@ -17,10 +17,6 @@ struct ArticleHeaderView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 240)
                 .clipped()
-            } else {
-                heroPlaceholder
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -57,6 +53,7 @@ struct ArticleHeaderView: View {
                     .background(Color.miltonSecondary.opacity(0.2))
             }
             .padding(.horizontal, kArticleHorizontalPadding)
+            .padding(.top, article.thumbnailURL == nil ? 12 : 0)
         }
         .frame(width: width, alignment: .leading)
     }

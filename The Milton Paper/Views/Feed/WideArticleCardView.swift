@@ -6,33 +6,33 @@ struct WideArticleCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Full-width hero image
-            ZStack(alignment: .bottomLeading) {
-                if let url = article.thumbnailURL {
+            // Full-width hero image — omitted entirely when there's no photo
+            if let url = article.thumbnailURL {
+                ZStack(alignment: .bottomLeading) {
                     RemoteImage(url: url, targetWidth: 400) {
                         placeholder
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 190)
                     .clipped()
-                } else {
-                    placeholder
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 190)
+
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.5)],
+                        startPoint: .center,
+                        endPoint: .bottom
+                    )
+
+                    TagChipView(category: article.category, style: .solid)
+                        .padding(12)
                 }
-
-                LinearGradient(
-                    colors: [.clear, .black.opacity(0.5)],
-                    startPoint: .center,
-                    endPoint: .bottom
-                )
-
-                TagChipView(category: article.category, style: .solid)
-                    .padding(12)
             }
 
             // Text section
             VStack(alignment: .leading, spacing: 8) {
+                if article.thumbnailURL == nil {
+                    TagChipView(category: article.category)
+                }
+
                 Text(article.title)
                     .font(.custom("Georgia", size: 18).weight(.semibold))
                     .foregroundColor(.miltonText)

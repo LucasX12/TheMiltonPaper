@@ -6,17 +6,13 @@ struct ArticleCardView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Thumbnail
+            // Thumbnail — omitted entirely when the article has no photo
             if let url = article.thumbnailURL {
                 RemoteImage(url: url, targetWidth: 88) {
                     thumbnailPlaceholder
                 }
                 .frame(width: 88, height: 88)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                thumbnailPlaceholder
-                    .frame(width: 88, height: 88)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             // Text content
