@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 extension Notification.Name {
     static let miltonNavigateToCategory = Notification.Name("miltonNavigateToCategory")
@@ -193,7 +194,11 @@ struct ArticleFeedView: View {
                 } else {
                     try await fs.removeBookmark(uid: uid, articleID: article.id)
                 }
-            } catch {}
+            } catch {
+                viewModel.articles[idx].isBookmarked = !isBookmarked
+                viewModel.filteredArticles = viewModel.articles
+                os_log("[Bookmark Error] Failed to save bookmark: %@", log: OSLog.default, type: .error, error.localizedDescription)
+            }
         }
     }
 }

@@ -156,7 +156,7 @@ struct ArticleDetailView: View {
                                 .padding(.bottom, 8)
                             }
 
-                            Spacer(minLength: 40)
+                            Spacer(minLength: 100)
                         }
                         .frame(width: w)
                     }

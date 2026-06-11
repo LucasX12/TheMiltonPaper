@@ -26,13 +26,17 @@ struct StaffDashboardView: View {
         List {
             // Quick links
             Section("Quick Links") {
-                Link(destination: URL(string: "https://account.squarespace.com")!) {
-                    Label("Open Squarespace Editor", systemImage: "pencil.and.outline")
-                        .foregroundColor(.miltonText)
+                if let squarespaceURL = URL(string: "https://account.squarespace.com") {
+                    Link(destination: squarespaceURL) {
+                        Label("Open Squarespace Editor", systemImage: "pencil.and.outline")
+                            .foregroundColor(.miltonText)
+                    }
                 }
-                Link(destination: URL(string: "https://console.firebase.google.com")!) {
-                    Label("Firebase Console", systemImage: "flame")
-                        .foregroundColor(.miltonText)
+                if let firebaseURL = URL(string: "https://console.firebase.google.com") {
+                    Link(destination: firebaseURL) {
+                        Label("Firebase Console", systemImage: "flame")
+                            .foregroundColor(.miltonText)
+                    }
                 }
             }
 

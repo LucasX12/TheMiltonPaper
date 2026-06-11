@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import UIKit
 import FirebaseFirestore
+import os
 
 // MARK: - Types
 
@@ -83,6 +84,10 @@ final class WordleViewModel: ObservableObject {
                 self?.startTimer()
             }
         }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Game Control
@@ -354,7 +359,7 @@ final class WordleViewModel: ObservableObject {
                         "date": dateString
                     ])
             } catch {
-                print("Score submit error: \(error)")
+                os_log("[Wordle] Failed to submit score: %@", log: OSLog.default, type: .error, error.localizedDescription)
             }
         }
     }

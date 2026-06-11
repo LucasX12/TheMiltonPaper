@@ -59,7 +59,7 @@ struct ArticleBodyView: UIViewRepresentable {
                 h3 { font-size: 17px; }
                 p { margin: 0 0 16px; }
                 a { color: #1A2744; text-decoration: underline; }
-                img, video, iframe { max-width: 100% !important; width: auto !important; height: auto !important; border-radius: 8px; margin: 16px 0; display: block; }
+                img, video, iframe { max-width: 100% !important; width: auto !important; height: auto !important; border-radius: 8px; margin: 12px 0; display: block; }
                 blockquote {
                     border-left: 3px solid #C9A84C;
                     padding: 8px 16px;
@@ -68,8 +68,8 @@ struct ArticleBodyView: UIViewRepresentable {
                     font-style: italic;
                     text-align: left;
                 }
-                figure { margin: 16px 0; }
-                figcaption { font-size: 13px; color: #6E6E73; margin-top: 6px; font-style: italic; text-align: left; }
+                figure { margin: 12px 0; }
+                figcaption { font-size: 13px; color: #6E6E73; margin-top: 4px; font-style: italic; text-align: left; }
                 ul, ol { margin: 0 0 16px 24px; text-align: left; }
                 li { margin-bottom: 6px; }
                 table { width: 100% !important; table-layout: fixed; word-break: break-word; }
