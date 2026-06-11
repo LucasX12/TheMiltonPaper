@@ -65,16 +65,22 @@ final class FirestoreService {
     // MARK: - Bookmarks
 
     func addBookmark(uid: String, articleID: String) async throws {
+        // Completion variant: queues the write locally and returns immediately,
+        // so bookmarking works offline without suspending on the server ack
         userRef(uid).setData(
             ["bookmarkedArticleIDs": FieldValue.arrayUnion([articleID])], merge: true
-        )
+        ) { error in
+            if let error { print("[Firestore] Bookmark sync failed: \(error)") }
+        }
         syncBookmarkToLocalUser(uid: uid, articleID: articleID, added: true)
     }
 
     func removeBookmark(uid: String, articleID: String) async throws {
         userRef(uid).setData(
             ["bookmarkedArticleIDs": FieldValue.arrayRemove([articleID])], merge: true
-        )
+        ) { error in
+            if let error { print("[Firestore] Bookmark sync failed: \(error)") }
+        }
         syncBookmarkToLocalUser(uid: uid, articleID: articleID, added: false)
     }
 
@@ -94,7 +100,9 @@ final class FirestoreService {
         userRef(uid).setData([
             "notificationsEnabled": enabled,
             "notificationTopics": topics
-        ], merge: true)
+        ], merge: true) { error in
+            if let error { print("[Firestore] Preference sync failed: \(error)") }
+        }
         guard var user = AuthService.shared.currentUser, user.uid == uid else { return }
         user.notificationsEnabled = enabled
         user.notificationTopics = topics
