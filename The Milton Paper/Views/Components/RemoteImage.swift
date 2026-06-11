@@ -14,31 +14,37 @@ struct RemoteImage<Placeholder: View>: View {
     @State private var didFail = false
 
     var body: some View {
-        ZStack {
-            if let loadedImage {
-                Image(uiImage: loadedImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else if didFail || url == nil {
-                failurePlaceholder()
-            } else {
-                ShimmerView()
+        // Color.clear adopts exactly the size proposed by the parent, so this
+        // view sizes like AsyncImage: the fill-mode image is drawn as an
+        // overlay and clipped, and can never push the layout wider or taller
+        // than the slot the caller gave it.
+        Color.clear
+            .overlay {
+                if let loadedImage {
+                    Image(uiImage: loadedImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else if didFail || url == nil {
+                    failurePlaceholder()
+                } else {
+                    ShimmerView()
+                }
             }
-        }
-        .task(id: url) {
-            guard let url else {
-                loadedImage = nil
-                didFail = false
-                return
+            .clipped()
+            .task(id: url) {
+                guard let url else {
+                    loadedImage = nil
+                    didFail = false
+                    return
+                }
+                let scale = max(1, displayScale)
+                if let image = await ImageLoader.shared.image(for: url, maxPixelWidth: targetWidth * scale) {
+                    loadedImage = image
+                    didFail = false
+                } else if !Task.isCancelled {
+                    loadedImage = nil
+                    didFail = true
+                }
             }
-            let scale = max(1, displayScale)
-            if let image = await ImageLoader.shared.image(for: url, maxPixelWidth: targetWidth * scale) {
-                loadedImage = image
-                didFail = false
-            } else if !Task.isCancelled {
-                loadedImage = nil
-                didFail = true
-            }
-        }
     }
 }
