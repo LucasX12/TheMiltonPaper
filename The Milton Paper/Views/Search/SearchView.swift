@@ -57,6 +57,8 @@ struct SearchView: View {
                                         selectedArticle = article
                                     }
                             }
+
+                            Spacer(minLength: 100)
                         }
                         .padding(.vertical, 8)
                     }

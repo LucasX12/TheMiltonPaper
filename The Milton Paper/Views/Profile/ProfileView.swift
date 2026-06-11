@@ -354,6 +354,10 @@ struct ReadingHistoryListView: View {
                     ReadingRecordRow(record: record)
                 }
             }
+
+            Spacer(minLength: 40)
+                .listRowBackground(Color.miltonBackground)
+                .listRowSeparator(.hidden)
         }
         .scrollContentBackground(.hidden)
         .background(Color.miltonBackground)

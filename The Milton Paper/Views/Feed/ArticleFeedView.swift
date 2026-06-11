@@ -127,7 +127,7 @@ struct ArticleFeedView: View {
                             .padding(.horizontal, 16)
                         }
 
-                        Spacer(minLength: 24)
+                        Spacer(minLength: 100)
                     }
                     .padding(.top, 12)
                 }
