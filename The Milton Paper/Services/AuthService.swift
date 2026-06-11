@@ -19,8 +19,23 @@ final class AuthService: ObservableObject {
     init() {
         stateListener = Auth.auth().addStateDidChangeListener { [weak self] _, firebaseUser in
             Task { @MainActor [weak self] in
-                self?.currentUser = firebaseUser.map { AppUser(from: $0) }
-                self?.isAuthenticated = firebaseUser != nil
+                guard let self else { return }
+                guard let firebaseUser else {
+                    self.currentUser = nil
+                    self.isAuthenticated = false
+                    return
+                }
+                // Publish immediately from the auth record, then hydrate the
+                // full profile (role, bookmarks, preferences) from Firestore.
+                let baseUser = AppUser(from: firebaseUser)
+                self.currentUser = baseUser
+                self.isAuthenticated = true
+
+                await FirestoreService.shared.ensureUserDocument(for: baseUser)
+                if let profile = try? await FirestoreService.shared.getUser(uid: firebaseUser.uid),
+                   Auth.auth().currentUser?.uid == firebaseUser.uid {
+                    self.currentUser = profile
+                }
             }
         }
     }
@@ -36,9 +51,11 @@ final class AuthService: ObservableObject {
         let request = result.user.createProfileChangeRequest()
         request.displayName = displayName
         try await request.commitChanges()
-        // The auth-state listener fired before the name was committed, so the
-        // published user still says "Reader" — refresh it from the live user.
-        currentUser = AppUser(from: result.user)
+        // The auth-state listener fired (and created the Firestore profile)
+        // before the name was committed — refresh both with the real name.
+        let user = AppUser(from: result.user)
+        currentUser = user
+        try? await FirestoreService.shared.updateUser(user)
     }
 
     func signOut() throws {
@@ -46,12 +63,24 @@ final class AuthService: ObservableObject {
         GIDSignIn.sharedInstance.signOut()
     }
 
-    /// Permanently deletes the Firebase account and clears local per-user data.
-    /// Firebase may throw `requiresRecentLogin` if the session is stale.
+    /// Permanently deletes the Firebase account along with the user's cloud
+    /// data (profile document and leaderboard entries). If Firebase rejects
+    /// the auth deletion (e.g. `requiresRecentLogin`), the profile document
+    /// is restored so the account is left intact.
     func deleteAccount() async throws {
         guard let user = Auth.auth().currentUser else { return }
         let uid = user.uid
-        try await user.delete()
+        let profileSnapshot = currentUser
+
+        try await FirestoreService.shared.deleteUserData(uid: uid)
+        do {
+            try await user.delete()
+        } catch {
+            if Auth.auth().currentUser != nil, let profileSnapshot {
+                try? await FirestoreService.shared.restoreUser(profileSnapshot)
+            }
+            throw error
+        }
         GIDSignIn.sharedInstance.signOut()
         FirestoreService.shared.clearLocalData(uid: uid)
     }

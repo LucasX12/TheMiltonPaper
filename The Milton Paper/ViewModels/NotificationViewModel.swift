@@ -54,7 +54,9 @@ final class NotificationViewModel: ObservableObject {
         let topics = notificationsEnabled ? Array(enabledTopics) : []
         notificationService.syncTopics(enabled: notificationsEnabled, topics: topics)
         do {
-            try await firestoreService.updateNotificationTopics(uid: uid, topics: topics)
+            try await firestoreService.updateNotificationSettings(
+                uid: uid, enabled: notificationsEnabled, topics: topics
+            )
         } catch {
             errorMessage = error.localizedDescription
         }

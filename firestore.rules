@@ -6,10 +6,38 @@ rules_version = '2';
 //   firebase deploy --only firestore:rules
 //
 // Without these rules (e.g. while the database is in "test mode"), any client
-// can read and write every document — including overwriting other users'
-// Mordle scores or filling the database with junk.
+// can read and write every document — including other users' profiles and
+// Mordle scores.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // User profiles and bookmarks. Each user can only touch their own
+    // document, and can never grant themselves the "staff" role — staff is
+    // assigned manually in the Firebase console.
+    match /users/{uid} {
+      allow read, delete: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && request.resource.data.get('role', 'reader') == 'reader'
+        && validProfile();
+
+      allow update: if isOwner(uid)
+        && request.resource.data.get('role', 'reader') == resource.data.get('role', 'reader')
+        && validProfile();
+
+      function validProfile() {
+        return request.resource.data.get('displayName', '') is string
+          && request.resource.data.get('displayName', '').size() <= 100
+          && request.resource.data.get('bookmarkedArticleIDs', []) is list
+          && request.resource.data.get('bookmarkedArticleIDs', []).size() <= 1000
+          && request.resource.data.get('notificationTopics', []) is list
+          && request.resource.data.get('notificationTopics', []).size() <= 20;
+      }
+    }
 
     // Daily Mordle leaderboard. Document ID format: "<yyyy-MM-dd>_<uid>".
     match /wordleScores/{scoreId} {
@@ -33,7 +61,8 @@ service cloud.firestore {
         && request.resource.data.seconds >= 0
         && request.resource.data.seconds <= 86400;
 
-      allow delete: if false;
+      // Users may delete their own scores (used by account deletion).
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
     // Everything else is denied by default.
