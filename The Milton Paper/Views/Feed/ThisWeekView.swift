@@ -46,7 +46,9 @@ struct ThisWeekView: View {
 
     // Step 1: fetch the Squarespace JSON API to extract the embedded Drive file ID
     private func fetchGoogleDriveFileID() async throws -> String {
-        let url = URL(string: "https://themiltonpaper.com/latest-issue?format=json")!
+        guard let url = URL(string: "https://themiltonpaper.com/latest-issue?format=json") else {
+            throw URLError(.badURL)
+        }
         let (data, _) = try await URLSession.shared.data(from: url)
         let text = String(data: data, encoding: .utf8) ?? ""
 
@@ -69,7 +71,9 @@ struct ThisWeekView: View {
     // Step 2: download the raw PDF bytes from Google Drive
     private func downloadDrivePDF(fileID: String) async throws -> Data {
         // confirm=t bypasses the virus-scan interstitial for larger files
-        let url = URL(string: "https://drive.google.com/uc?export=download&id=\(fileID)&confirm=t")!
+        guard let url = URL(string: "https://drive.google.com/uc?export=download&id=\(fileID)&confirm=t") else {
+            throw URLError(.badURL)
+        }
         var request = URLRequest(url: url)
         request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
 
