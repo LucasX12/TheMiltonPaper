@@ -78,7 +78,6 @@ final class RSSParser: NSObject, XMLParserDelegate {
         case "pubDate":         currentItem["pubDate"] = value
         case "link":            currentItem["link"] = value
         case "guid":            if currentItem["guid"] == nil { currentItem["guid"] = value }
-        case "category":        if currentItem["category"] == nil { currentItem["category"] = value }
         case "item":
             if let article = buildArticle(from: currentItem) {
                 articles.append(article)
@@ -101,7 +100,9 @@ final class RSSParser: NSObject, XMLParserDelegate {
         // Try to extract the real byline from article content before falling back to the poster account
         let contentForAuthor = item["description"] ?? item["bodyHTML"] ?? ""
         let author = extractAuthorFromContent(contentForAuthor) ?? item["author"] ?? "The Milton Paper"
-        let category = item["category"] ?? defaultCategory
+        // The feed a story came from is authoritative: each section's tab is
+        // driven by the site's collections, not by per-post category tags.
+        let category = defaultCategory
         // Strip byline from body HTML so it doesn't appear twice (header already shows the author)
         let rawBodyHTML = item["bodyHTML"] ?? item["description"] ?? ""
         let bodyHTML = stripBylineFromBodyHTML(rawBodyHTML)

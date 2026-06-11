@@ -11,7 +11,16 @@ enum Config {
         RSSFeed(url: "https://www.themiltonpaper.com/opinion?format=rss",   category: "Opinion"),
         RSSFeed(url: "https://www.themiltonpaper.com/sports?format=rss",    category: "Sports"),
         RSSFeed(url: "https://www.themiltonpaper.com/editorial?format=rss", category: "Editorial"),
+        // Temporary TMP 43 send-off sections. When the site retires them,
+        // delete these two feeds (and the category constants below) — the
+        // tabs and the Recent-page carousel disappear automatically once
+        // the feeds stop returning articles.
+        RSSFeed(url: "https://www.themiltonpaper.com/student-reflections?format=rss",   category: categoryStudentReflections),
+        RSSFeed(url: "https://www.themiltonpaper.com/faculty-farewells-tmp43?format=rss", category: categoryFacultyFarewells),
     ]
+
+    static let categoryStudentReflections = "Student Reflections"
+    static let categoryFacultyFarewells   = "Faculty Farewells"
 
     static let squarespaceAPIKey = ""
     static let squarespaceCollectionID = ""

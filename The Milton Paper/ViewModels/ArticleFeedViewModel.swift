@@ -11,7 +11,11 @@ final class ArticleFeedViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var searchQuery = ""
 
-    let categories = ["This Week", "Mordle", "Recent", "News", "Opinion", "Sports", "Editorial"]
+    // Temporary sections (Student Reflections, Faculty Farewells) are inserted
+    // after Recent only while their feeds still return articles, so the tabs
+    // retire themselves when the site takes the sections down.
+    @Published private(set) var categories = ["This Week", "Mordle", "Recent",
+                                              "News", "Opinion", "Sports", "Editorial"]
 
     private let service = ArticleService.shared
     private var cancellables = Set<AnyCancellable>()
@@ -41,6 +45,7 @@ final class ArticleFeedViewModel: ObservableObject {
         do {
             let fetched = try await service.fetchArticles()
             articles = await applyingBookmarks(to: fetched)
+            updateCategories()
             applyFilter()
         } catch {
             errorMessage = error.localizedDescription
@@ -53,6 +58,7 @@ final class ArticleFeedViewModel: ObservableObject {
         do {
             let fetched = try await service.fetchArticles(forceRefresh: true)
             articles = await applyingBookmarks(to: fetched)
+            updateCategories()
             applyFilter()
         } catch {
             errorMessage = error.localizedDescription
@@ -75,6 +81,22 @@ final class ArticleFeedViewModel: ObservableObject {
     }
 
     // MARK: - Private
+
+    private func updateCategories() {
+        var list = ["This Week", "Mordle", "Recent"]
+        if hasArticles(in: Config.categoryStudentReflections) {
+            list.append(Config.categoryStudentReflections)
+        }
+        if hasArticles(in: Config.categoryFacultyFarewells) {
+            list.append(Config.categoryFacultyFarewells)
+        }
+        list += ["News", "Opinion", "Sports", "Editorial"]
+        if list != categories { categories = list }
+    }
+
+    private func hasArticles(in category: String) -> Bool {
+        articles.contains { $0.category.lowercased() == category.lowercased() }
+    }
 
     private func applyingBookmarks(to articles: [Article]) async -> [Article] {
         guard let uid = AuthService.shared.currentUser?.uid,

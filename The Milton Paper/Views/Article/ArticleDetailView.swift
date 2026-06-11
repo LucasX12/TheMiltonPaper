@@ -170,6 +170,9 @@ struct ArticleDetailView: View {
                         .frame(width: w)
                     }
                 }
+                // Content runs to the physical top of the screen; the toolbar
+                // buttons float over it as individual glass controls.
+                .ignoresSafeArea(edges: .top)
                 .onChange(of: webViewHeight) { _, _ in restoreScrollIfNeeded() }
             }
         }
@@ -193,8 +196,7 @@ struct ArticleDetailView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: showBackToTop)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.miltonSurface, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 CircularProgressRing(progress: readingProgress)

@@ -139,12 +139,25 @@ struct ArticleFeedView: View {
             WordlePageView()
         } else {
             let pageArticles = self.pageArticles(for: category)
-            if pageArticles.isEmpty {
+            let reflections = category == "Recent" ? reflectionArticles : []
+            if pageArticles.isEmpty && reflections.isEmpty {
                 emptyState
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 12) {
+                        if !reflections.isEmpty {
+                            ReflectionsCarousel(
+                                articles: reflections,
+                                onSelect: { selectedArticle = $0 },
+                                onSeeAll: {
+                                    if let index = viewModel.categories.firstIndex(of: Config.categoryStudentReflections) {
+                                        selectPage(index)
+                                    }
+                                }
+                            )
+                        }
+
                         if let featured = pageArticles.first {
                             Button { selectedArticle = featured } label: {
                                 FeaturedArticleView(
@@ -177,8 +190,19 @@ struct ArticleFeedView: View {
 
     private func pageArticles(for category: String) -> [Article] {
         let base = viewModel.filteredArticles
-        if category == "Recent" { return Array(base.prefix(15)) }
+        if category == "Recent" {
+            // Reflections live in the carousel directly above the Recent list
+            return Array(
+                base.filter { $0.category != Config.categoryStudentReflections }.prefix(15)
+            )
+        }
         return base.filter { $0.category.lowercased() == category.lowercased() }
+    }
+
+    private var reflectionArticles: [Article] {
+        viewModel.filteredArticles.filter {
+            $0.category.lowercased() == Config.categoryStudentReflections.lowercased()
+        }
     }
 
     // MARK: - Card Style Rotation
