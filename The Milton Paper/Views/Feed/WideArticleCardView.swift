@@ -13,8 +13,10 @@ struct WideArticleCardView: View {
                         switch phase {
                         case .success(let image):
                             image.resizable().aspectRatio(contentMode: .fill)
-                        default:
+                        case .failure:
                             placeholder
+                        default:
+                            ShimmerView()
                         }
                     }
                     .frame(maxWidth: .infinity)

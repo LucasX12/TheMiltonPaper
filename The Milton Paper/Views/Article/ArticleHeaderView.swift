@@ -15,8 +15,10 @@ struct ArticleHeaderView: View {
                     switch phase {
                     case .success(let image):
                         image.resizable().aspectRatio(contentMode: .fill)
-                    default:
+                    case .failure:
                         heroPlaceholder
+                    default:
+                        ShimmerView()
                     }
                 }
                 .frame(maxWidth: .infinity)

@@ -1,5 +1,16 @@
 import SwiftUI
 
+// Pulsing shimmer used as the loading placeholder for all AsyncImages
+struct ShimmerView: View {
+    @State private var animating = false
+    var body: some View {
+        Color.miltonSecondary
+            .opacity(animating ? 0.18 : 0.07)
+            .animation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true), value: animating)
+            .onAppear { animating = true }
+    }
+}
+
 extension View {
     func miltonCardStyle() -> some View {
         self

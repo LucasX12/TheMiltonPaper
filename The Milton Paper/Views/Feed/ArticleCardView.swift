@@ -15,7 +15,7 @@ struct ArticleCardView: View {
                     case .failure:
                         thumbnailPlaceholder
                     default:
-                        Color.miltonBackground
+                        ShimmerView()
                     }
                 }
                 .frame(width: 88, height: 88)

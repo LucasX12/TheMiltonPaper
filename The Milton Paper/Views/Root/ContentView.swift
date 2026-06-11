@@ -5,15 +5,6 @@ struct ContentView: View {
     @State private var showSplash = true
     @State private var selectedTab = 0
 
-    init() {
-        // Remove the hairline separator above the tab bar without overriding the glass material
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        appearance.shadowColor = .clear
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
-    }
-
     var body: some View {
         Group {
             if showSplash {

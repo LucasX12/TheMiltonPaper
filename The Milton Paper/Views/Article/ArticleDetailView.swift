@@ -161,6 +161,7 @@ struct ArticleDetailView: View {
                         .frame(width: w)
                     }
                 }
+                .ignoresSafeArea(edges: .top)
                 .onChange(of: webViewHeight) { _, _ in restoreScrollIfNeeded() }
             }
         }
@@ -246,7 +247,7 @@ private struct RelatedArticleRow: View {
                 AsyncImage(url: thumb) { img in
                     img.resizable().scaledToFill()
                 } placeholder: {
-                    Color.miltonSecondary.opacity(0.12)
+                    ShimmerView()
                 }
                 .frame(width: 64, height: 64)
                 .cornerRadius(8)

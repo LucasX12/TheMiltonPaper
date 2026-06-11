@@ -29,7 +29,6 @@ struct ArticleFeedView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.miltonSurface, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Button {
