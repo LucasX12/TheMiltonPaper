@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 struct ProfileView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
@@ -353,6 +354,10 @@ struct ReadingHistoryListView: View {
                     ReadingRecordRow(record: record)
                 }
             }
+
+            Spacer(minLength: 40)
+                .listRowBackground(Color.miltonBackground)
+                .listRowSeparator(.hidden)
         }
         .scrollContentBackground(.hidden)
         .background(Color.miltonBackground)
@@ -389,7 +394,9 @@ struct ReadingResumeView: View {
         .task {
             do {
                 article = try await ArticleService.shared.fetchArticle(id: record.id)
-            } catch {}
+            } catch {
+                os_log("[Reading Resume] Failed to fetch article %@: %@", log: OSLog.default, type: .error, record.id, error.localizedDescription)
+            }
             isLoading = false
         }
     }

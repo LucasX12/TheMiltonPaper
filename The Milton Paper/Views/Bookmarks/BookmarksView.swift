@@ -63,6 +63,11 @@ struct BookmarksView: View {
             .onDelete { offsets in
                 pendingDeleteOffsets = offsets
             }
+
+            Spacer(minLength: 40)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                .listRowBackground(Color.miltonBackground)
+                .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
         .background(Color.miltonBackground)

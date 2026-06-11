@@ -2,6 +2,7 @@ import UIKit
 import UserNotifications
 import FirebaseCore
 import GoogleSignIn
+import os
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
@@ -19,13 +20,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        print("[APNs] Device token: \(token)")
+        os_log("[APNs] Device token registered", log: OSLog.default, type: .debug)
         NotificationService.shared.registerFCMToken(token)
     }
 
     func application(_ application: UIApplication,
                      didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("[APNs] Registration failed: \(error.localizedDescription)")
+        os_log("[APNs] Registration failed: %@", log: OSLog.default, type: .error, error.localizedDescription)
     }
 
     // MARK: - UNUserNotificationCenterDelegate

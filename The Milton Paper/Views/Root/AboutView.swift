@@ -62,15 +62,15 @@ struct AboutView: View {
     @State private var selectedTab   = 0
     @State private var aboutState    = FetchState.idle
     @State private var mastheadState = FetchState.idle
-    @State private var subscribeURL  = URL(string: "https://www.themiltonpaper.com")!
+    @State private var subscribeURL  = URL(string: "https://www.themiltonpaper.com") ?? URL(fileURLWithPath: "")
     @State private var showSubscribe = false
 
     private enum FetchState {
         case idle, loading, loaded([TextLine]), failed
     }
 
-    private let aboutURL    = URL(string: "https://www.themiltonpaper.com/about")!
-    private let mastheadURL = URL(string: "https://www.themiltonpaper.com/masthead")!
+    private let aboutURL    = URL(string: "https://www.themiltonpaper.com/about") ?? URL(fileURLWithPath: "")
+    private let mastheadURL = URL(string: "https://www.themiltonpaper.com/masthead") ?? URL(fileURLWithPath: "")
 
     var body: some View {
         VStack(spacing: 0) {

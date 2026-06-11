@@ -5,6 +5,7 @@ struct SearchView: View {
     @State private var articles: [Article] = []
     @State private var isLoading = true
     @State private var selectedArticle: Article?
+    @State private var errorMessage: String?
 
     private var filteredArticles: [Article] {
         guard !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -25,6 +26,10 @@ struct SearchView: View {
 
                 if isLoading {
                     LoadingView()
+                } else if let error = errorMessage {
+                    ErrorView(message: error) {
+                        reload()
+                    }
                 } else if searchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "magnifyingglass")
@@ -52,6 +57,8 @@ struct SearchView: View {
                                         selectedArticle = article
                                     }
                             }
+
+                            Spacer(minLength: 100)
                         }
                         .padding(.vertical, 8)
                     }
@@ -66,9 +73,18 @@ struct SearchView: View {
             }
         }
         .task {
+            reload()
+        }
+    }
+
+    private func reload() {
+        Task {
+            isLoading = true
+            errorMessage = nil
             do {
                 articles = try await ArticleService.shared.fetchArticles()
             } catch {
+                errorMessage = error.localizedDescription
                 articles = []
             }
             isLoading = false

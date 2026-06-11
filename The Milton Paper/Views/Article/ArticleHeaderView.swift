@@ -8,7 +8,7 @@ struct ArticleHeaderView: View {
     var width: CGFloat = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.width ?? 393
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
             // Hero image
             if let url = article.thumbnailURL {
                 AsyncImage(url: url) { phase in
@@ -24,10 +24,12 @@ struct ArticleHeaderView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 240)
                 .clipped()
+                .padding(.bottom, 16)
             } else {
                 heroPlaceholder
                     .frame(maxWidth: .infinity)
                     .frame(height: 200)
+                    .padding(.bottom, 16)
             }
 
             VStack(alignment: .leading, spacing: 12) {
