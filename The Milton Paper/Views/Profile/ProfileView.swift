@@ -5,6 +5,7 @@ struct ProfileView: View {
     @State private var showLoginPrompt = false
     @State private var inProgressArticles: [ReadingRecord] = []
     @State private var recentlyReadArticles: [ReadingRecord] = []
+    @State private var showSignOutConfirm = false
     @State private var showDeleteConfirm = false
     @State private var deleteErrorMessage: String?
 
@@ -26,6 +27,14 @@ struct ProfileView: View {
             .toolbarBackground(Color.miltonSurface, for: .navigationBar)
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
             .onAppear { loadReadingHistory() }
+            .alert("Sign Out?", isPresented: $showSignOutConfirm) {
+                Button("Sign Out", role: .destructive) {
+                    authViewModel.signOut()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You can sign back in at any time. Your bookmarks are saved to your account.")
+            }
             .alert("Delete Account?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {
                     Task {
@@ -175,10 +184,10 @@ struct ProfileView: View {
                 }
             }
 
-            // Sign out / delete account
+            // Sign out and delete account as two distinct cards
             Section {
                 Button(role: .destructive) {
-                    authViewModel.signOut()
+                    showSignOutConfirm = true
                 } label: {
                     HStack {
                         Spacer()
@@ -187,6 +196,9 @@ struct ProfileView: View {
                         Spacer()
                     }
                 }
+            }
+
+            Section {
                 Button(role: .destructive) {
                     showDeleteConfirm = true
                 } label: {
@@ -227,9 +239,13 @@ struct ProfileView: View {
                         .padding(.horizontal, 40)
                 }
 
-                Button("Sign In") { showLoginPrompt = true }
-                    .miltonPrimaryButton()
-                    .padding(.horizontal, 48)
+                Button {
+                    showLoginPrompt = true
+                } label: {
+                    Text("Sign In")
+                        .miltonPrimaryButton()
+                }
+                .padding(.horizontal, 48)
 
                 readingHistorySection
                     .padding(.top, 8)

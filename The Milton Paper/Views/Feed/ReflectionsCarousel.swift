@@ -42,6 +42,10 @@ struct ReflectionsCarousel: View {
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.hidden)
+            // The feed locks the page pager while a horizontal drag starts
+            // here; that lock propagates down the environment, so this scroll
+            // view must explicitly stay enabled.
+            .scrollDisabled(false)
         }
     }
 }

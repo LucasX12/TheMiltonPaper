@@ -56,6 +56,9 @@ final class WordleViewModel: ObservableObject {
 
     let todayWord: String
     let dateString: String
+    // Saved game state is namespaced per account so a finished puzzle (and
+    // its score) never leaks into another user's session on this device.
+    private let ownerID: String
 
     private var timerTask: Task<Void, Never>?
     nonisolated(unsafe) private var lifecycleObservers: [NSObjectProtocol] = []
@@ -64,9 +67,11 @@ final class WordleViewModel: ObservableObject {
         let today = Self.todayDateString()
         self.dateString = today
         self.todayWord = Self.wordForToday()
+        self.ownerID = AuthService.shared.currentUser?.uid ?? "guest"
         self.grid = (0..<Self.maxGuesses).map { _ in
             (0..<Self.wordLength).map { _ in LetterCell() }
         }
+        cleanupStaleStates()
         restoreState()
 
         lifecycleObservers.append(NotificationCenter.default.addObserver(
@@ -227,7 +232,17 @@ final class WordleViewModel: ObservableObject {
         return fmt.string(from: Date())
     }
 
-    private var stateKey: String { "wordle.state.\(dateString)" }
+    private var stateKey: String { "wordle.state.\(dateString).\(ownerID)" }
+
+    /// Removes saved games from previous days (for any account) so the
+    /// defaults store doesn't accumulate one entry per day forever.
+    private func cleanupStaleStates() {
+        let defaults = UserDefaults.standard
+        for key in defaults.dictionaryRepresentation().keys
+        where key.hasPrefix("wordle.state.") && !key.contains(dateString) {
+            defaults.removeObject(forKey: key)
+        }
+    }
 
     private func saveState() {
         let letters   = grid.map { $0.map { $0.letter } }

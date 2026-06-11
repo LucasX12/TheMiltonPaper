@@ -13,6 +13,8 @@ struct ArticleFeedView: View {
     @State private var categoryIndex = 2
     @State private var pageIndex: Int? = 2
     @State private var showAbout = false
+    @State private var pagerLocked = false
+    @State private var pagerUnlockTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -95,6 +97,27 @@ struct ArticleFeedView: View {
         }
     }
 
+    // MARK: - Carousel / Pager Gesture Arbitration
+
+    // Horizontal drags that start on the carousel must scroll the carousel,
+    // never page the category pager. When the carousel's scroll view claims
+    // the touch it cancels our observer gesture (so onEnded never fires) —
+    // the timed task backstops the unlock.
+    private func holdPagerForCarousel() {
+        pagerLocked = true
+        pagerUnlockTask?.cancel()
+        pagerUnlockTask = Task {
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard !Task.isCancelled else { return }
+            pagerLocked = false
+        }
+    }
+
+    private func releasePager() {
+        pagerUnlockTask?.cancel()
+        pagerLocked = false
+    }
+
     // MARK: - Feed Content
 
     private var feedContent: some View {
@@ -124,6 +147,7 @@ struct ArticleFeedView: View {
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $pageIndex)
                 .scrollIndicators(.hidden)
+                .scrollDisabled(pagerLocked)
                 .ignoresSafeArea(.container, edges: .bottom)
             }
         }
@@ -136,7 +160,9 @@ struct ArticleFeedView: View {
         if category == "This Week" {
             ThisWeekView()
         } else if category == "Mordle" {
+            // Fresh game state per signed-in account (and for guests)
             WordlePageView()
+                .id(authViewModel.currentUser?.uid ?? "guest")
         } else {
             let pageArticles = self.pageArticles(for: category)
             let reflections = category == "Recent" ? reflectionArticles : []
@@ -155,6 +181,15 @@ struct ArticleFeedView: View {
                                         selectPage(index)
                                     }
                                 }
+                            )
+                            .simultaneousGesture(
+                                DragGesture(minimumDistance: 1)
+                                    .onChanged { value in
+                                        if abs(value.translation.width) > abs(value.translation.height) {
+                                            holdPagerForCarousel()
+                                        }
+                                    }
+                                    .onEnded { _ in releasePager() }
                             )
                         }
 

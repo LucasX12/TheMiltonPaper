@@ -90,8 +90,12 @@ struct ForgotPasswordView: View {
                 .font(.miltonCaption)
                 .foregroundColor(.miltonSecondary)
                 .multilineTextAlignment(.center)
-            Button("Done") { dismiss() }
-                .miltonPrimaryButton()
+            Button {
+                dismiss()
+            } label: {
+                Text("Done")
+                    .miltonPrimaryButton()
+            }
         }
     }
 }

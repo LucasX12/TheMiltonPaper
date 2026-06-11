@@ -98,9 +98,13 @@ struct BookmarksView: View {
                 .foregroundColor(.miltonSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
-            Button("Sign In") { showLoginPrompt = true }
-                .miltonPrimaryButton()
-                .padding(.horizontal, 48)
+            Button {
+                showLoginPrompt = true
+            } label: {
+                Text("Sign In")
+                    .miltonPrimaryButton()
+            }
+            .padding(.horizontal, 48)
         }
     }
 }

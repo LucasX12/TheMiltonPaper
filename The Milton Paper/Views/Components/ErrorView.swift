@@ -21,9 +21,11 @@ struct ErrorView: View {
                 .padding(.horizontal, 32)
 
             if let retry = retryAction {
-                Button("Try Again", action: retry)
-                    .miltonPrimaryButton()
-                    .padding(.horizontal, 48)
+                Button(action: retry) {
+                    Text("Try Again")
+                        .miltonPrimaryButton()
+                }
+                .padding(.horizontal, 48)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
