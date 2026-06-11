@@ -35,7 +35,9 @@ struct CategoryTabBar: View {
             }
             .onChange(of: selectedIndex) { _, newIndex in
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    proxy.scrollTo(newIndex, anchor: .center)
+                    // nil anchor scrolls just enough to reveal the selected tab,
+                    // so the bar stays left-aligned instead of auto-centering
+                    proxy.scrollTo(newIndex, anchor: nil)
                 }
             }
         }
