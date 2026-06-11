@@ -11,6 +11,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) -> Bool {
         FirebaseApp.configure()
         UNUserNotificationCenter.current().delegate = self
+        // Generous shared cache so article images persist across launches
+        URLCache.shared = URLCache(
+            memoryCapacity: 32 * 1024 * 1024,
+            diskCapacity: 256 * 1024 * 1024
+        )
         return true
     }
 

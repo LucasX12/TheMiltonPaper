@@ -76,6 +76,7 @@ struct SignUpView: View {
             }
             .navigationTitle("Sign Up")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { authViewModel.errorMessage = nil }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

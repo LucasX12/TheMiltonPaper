@@ -58,6 +58,7 @@ final class WordleViewModel: ObservableObject {
     let dateString: String
 
     private var timerTask: Task<Void, Never>?
+    nonisolated(unsafe) private var lifecycleObservers: [NSObjectProtocol] = []
 
     init() {
         let today = Self.todayDateString()
@@ -68,13 +69,13 @@ final class WordleViewModel: ObservableObject {
         }
         restoreState()
 
-        NotificationCenter.default.addObserver(
+        lifecycleObservers.append(NotificationCenter.default.addObserver(
             forName: UIApplication.willResignActiveNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in self?.stopTimer() }
-        }
-        NotificationCenter.default.addObserver(
+        })
+        lifecycleObservers.append(NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
@@ -82,6 +83,12 @@ final class WordleViewModel: ObservableObject {
                 guard self?.phase == .playing else { return }
                 self?.startTimer()
             }
+        })
+    }
+
+    deinit {
+        for observer in lifecycleObservers {
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 
@@ -194,11 +201,11 @@ final class WordleViewModel: ObservableObject {
 
     private func startTimer() {
         timerTask?.cancel()
-        timerTask = Task {
+        timerTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                guard !Task.isCancelled else { break }
-                elapsedSeconds += 1
+                guard !Task.isCancelled, let self else { break }
+                self.elapsedSeconds += 1
             }
         }
     }
@@ -210,8 +217,12 @@ final class WordleViewModel: ObservableObject {
 
     // MARK: - Persistence
 
+    // Locale-pinned so the leaderboard date key matches across devices
+    // regardless of the user's calendar or numbering system.
     private static func todayDateString() -> String {
         let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.calendar = Calendar(identifier: .gregorian)
         fmt.dateFormat = "yyyy-MM-dd"
         return fmt.string(from: Date())
     }
@@ -296,9 +307,11 @@ final class WordleViewModel: ObservableObject {
     // MARK: - Daily Word
 
     static func wordForToday() -> String {
-        let ref   = Calendar.current.date(from: DateComponents(year: 2024, month: 1, day: 1))!
-        let today = Calendar.current.startOfDay(for: Date())
-        let days  = Calendar.current.dateComponents([.day], from: ref, to: today).day ?? 0
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let ref   = calendar.date(from: DateComponents(year: 2024, month: 1, day: 1))!
+        let today = calendar.startOfDay(for: Date())
+        let days  = calendar.dateComponents([.day], from: ref, to: today).day ?? 0
         return wordList[abs(days) % wordList.count].uppercased()
     }
 
@@ -332,10 +345,11 @@ final class WordleViewModel: ObservableObject {
     }
 
     func submitScore(uid: String, displayName: String) {
+        let safeName = String(displayName.prefix(50))
         let tries = phase == .won ? currentRow : 7
         let docID = "\(dateString)_\(uid)"
         let score = WordleScore(id: docID, uid: uid,
-                                displayName: displayName, tries: tries,
+                                displayName: safeName, tries: tries,
                                 seconds: elapsedSeconds, date: dateString)
         leaderboard.removeAll { $0.uid == uid }
         leaderboard.append(score)
@@ -348,7 +362,7 @@ final class WordleViewModel: ObservableObject {
                     .document(docID)
                     .setData([
                         "uid": uid,
-                        "displayName": displayName,
+                        "displayName": safeName,
                         "tries": tries,
                         "seconds": elapsedSeconds,
                         "date": dateString

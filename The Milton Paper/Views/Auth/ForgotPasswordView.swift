@@ -26,6 +26,7 @@ struct ForgotPasswordView: View {
             }
             .navigationTitle("Reset Password")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { authViewModel.errorMessage = nil }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

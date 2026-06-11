@@ -11,15 +11,8 @@ struct ArticleHeaderView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Hero image
             if let url = article.thumbnailURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    case .failure:
-                        heroPlaceholder
-                    default:
-                        ShimmerView()
-                    }
+                RemoteImage(url: url, targetWidth: width) {
+                    heroPlaceholder
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 240)

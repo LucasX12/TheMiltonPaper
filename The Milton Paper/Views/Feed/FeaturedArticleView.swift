@@ -9,15 +9,8 @@ struct FeaturedArticleView: View {
             // Hero image
             ZStack(alignment: .bottomLeading) {
                 if let url = article.thumbnailURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        case .failure:
-                            heroPlaceholder
-                        default:
-                            ShimmerView()
-                        }
+                    RemoteImage(url: url, targetWidth: 400) {
+                        heroPlaceholder
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 200)

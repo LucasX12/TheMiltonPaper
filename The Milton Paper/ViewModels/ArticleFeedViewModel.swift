@@ -39,7 +39,8 @@ final class ArticleFeedViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         do {
-            articles = try await service.fetchArticles()
+            let fetched = try await service.fetchArticles()
+            articles = await applyingBookmarks(to: fetched)
             applyFilter()
         } catch {
             errorMessage = error.localizedDescription
@@ -50,7 +51,8 @@ final class ArticleFeedViewModel: ObservableObject {
     func refresh() async {
         errorMessage = nil
         do {
-            articles = try await service.fetchArticles(forceRefresh: true)
+            let fetched = try await service.fetchArticles(forceRefresh: true)
+            articles = await applyingBookmarks(to: fetched)
             applyFilter()
         } catch {
             errorMessage = error.localizedDescription
@@ -61,7 +63,31 @@ final class ArticleFeedViewModel: ObservableObject {
         selectedCategory = category
     }
 
+    /// Updates a single article's bookmark flag in place, preserving the
+    /// current search/category/date filtering.
+    func setBookmarked(id: String, _ isBookmarked: Bool) {
+        if let index = articles.firstIndex(where: { $0.id == id }) {
+            articles[index].isBookmarked = isBookmarked
+        }
+        if let index = filteredArticles.firstIndex(where: { $0.id == id }) {
+            filteredArticles[index].isBookmarked = isBookmarked
+        }
+    }
+
     // MARK: - Private
+
+    private func applyingBookmarks(to articles: [Article]) async -> [Article] {
+        guard let uid = AuthService.shared.currentUser?.uid,
+              let ids = try? await FirestoreService.shared.getBookmarkedArticleIDs(uid: uid),
+              !ids.isEmpty else { return articles }
+        let bookmarked = Set(ids)
+        var result = articles
+        for index in result.indices where bookmarked.contains(result[index].id) {
+            result[index].isBookmarked = true
+            service.updateBookmark(id: result[index].id, isBookmarked: true)
+        }
+        return result
+    }
 
     private func applyFilter() {
         var base = articles

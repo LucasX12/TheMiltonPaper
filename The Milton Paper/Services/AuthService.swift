@@ -36,11 +36,24 @@ final class AuthService: ObservableObject {
         let request = result.user.createProfileChangeRequest()
         request.displayName = displayName
         try await request.commitChanges()
+        // The auth-state listener fired before the name was committed, so the
+        // published user still says "Reader" — refresh it from the live user.
+        currentUser = AppUser(from: result.user)
     }
 
     func signOut() throws {
         try Auth.auth().signOut()
         GIDSignIn.sharedInstance.signOut()
+    }
+
+    /// Permanently deletes the Firebase account and clears local per-user data.
+    /// Firebase may throw `requiresRecentLogin` if the session is stale.
+    func deleteAccount() async throws {
+        guard let user = Auth.auth().currentUser else { return }
+        let uid = user.uid
+        try await user.delete()
+        GIDSignIn.sharedInstance.signOut()
+        FirestoreService.shared.clearLocalData(uid: uid)
     }
 
     func sendPasswordReset(email: String) async throws {
@@ -115,12 +128,16 @@ final class AuthService: ObservableObject {
     }
 
     private func randomNonceString(length: Int = 32) -> String {
-        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
         var result = ""
         var remaining = length
         while remaining > 0 {
             var randoms = [UInt8](repeating: 0, count: 16)
-            SecRandomCopyBytes(kSecRandomDefault, randoms.count, &randoms)
+            let status = SecRandomCopyBytes(kSecRandomDefault, randoms.count, &randoms)
+            if status != errSecSuccess {
+                // SystemRandomNumberGenerator is also cryptographically secure
+                randoms = (0..<16).map { _ in UInt8.random(in: .min ... .max) }
+            }
             for r in randoms where remaining > 0 {
                 if r < charset.count { result.append(charset[Int(r)]); remaining -= 1 }
             }

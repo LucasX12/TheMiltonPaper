@@ -8,15 +8,8 @@ struct ArticleCardView: View {
         HStack(alignment: .top, spacing: 12) {
             // Thumbnail
             if let url = article.thumbnailURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    case .failure:
-                        thumbnailPlaceholder
-                    default:
-                        ShimmerView()
-                    }
+                RemoteImage(url: url, targetWidth: 88) {
+                    thumbnailPlaceholder
                 }
                 .frame(width: 88, height: 88)
                 .clipShape(RoundedRectangle(cornerRadius: 8))

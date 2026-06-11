@@ -8,6 +8,10 @@ struct ThisWeekView: View {
     @State private var isLoading = true
     @State private var loadError: String?
 
+    // Session cache so swiping between categories doesn't re-download the issue
+    private static let pdfCache = NSCache<NSString, PDFDocument>()
+    private static let pdfCacheKey: NSString = "latest-issue"
+
     var body: some View {
         ZStack {
             Color.miltonBackground.ignoresSafeArea()
@@ -27,6 +31,11 @@ struct ThisWeekView: View {
     }
 
     private func loadPDF() async {
+        if let cached = Self.pdfCache.object(forKey: Self.pdfCacheKey) {
+            pdfDocument = cached
+            isLoading = false
+            return
+        }
         isLoading = true
         loadError = nil
         pdfDocument = nil
@@ -34,6 +43,7 @@ struct ThisWeekView: View {
             let fileID = try await fetchGoogleDriveFileID()
             let data   = try await downloadDrivePDF(fileID: fileID)
             if let doc = PDFDocument(data: data) {
+                Self.pdfCache.setObject(doc, forKey: Self.pdfCacheKey)
                 pdfDocument = doc
             } else {
                 loadError = "Could not open PDF"

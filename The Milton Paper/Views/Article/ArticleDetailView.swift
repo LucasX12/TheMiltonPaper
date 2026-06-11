@@ -40,7 +40,11 @@ private final class ScrollTrackerUIView: UIView {
                     let offset    = max(0, sv.contentOffset.y)
                     let scrollable = contentH - viewportH
                     let progress  = min(1.0, offset / scrollable)
-                    DispatchQueue.main.async { self?.onScroll(progress, offset) }
+                    if Thread.isMainThread {
+                        self?.onScroll(progress, offset)
+                    } else {
+                        DispatchQueue.main.async { self?.onScroll(progress, offset) }
+                    }
                 }
                 return
             }
@@ -74,7 +78,7 @@ struct ArticleDetailView: View {
     @State private var lastScrollOffset: CGFloat = 0
     @State private var scrollView: UIScrollView?
     @State private var hasRestoredScroll = false
-    @State private var currentScrollOffset: CGFloat = 0
+    @State private var showBackToTop = false
 
     let initialScrollOffset: CGFloat
 
@@ -91,14 +95,19 @@ struct ArticleDetailView: View {
                 let w = geo.size.width
                 ScrollView {
                     ZStack(alignment: .top) {
+                        // Only touch state when something meaningful changes —
+                        // a state write here re-renders the whole article view.
                         ScrollProgressTracker(
                             onScroll: { progress, offset in
-                                currentScrollOffset = offset
-                                if progress > readingProgress {
+                                let shouldShow = offset > 300
+                                if shouldShow != showBackToTop { showBackToTop = shouldShow }
+                                guard progress > readingProgress else { return }
+                                let crossedEnd = progress >= 0.99 && readingProgress < 0.99
+                                if progress - readingProgress >= 0.005 || crossedEnd {
                                     readingProgress = progress
                                     lastScrollOffset = offset
+                                    if crossedEnd { saveReadingProgress() }
                                 }
-                                if progress >= 0.99 { saveReadingProgress() }
                             },
                             onScrollViewReady: { sv in scrollView = sv }
                         )
@@ -161,12 +170,11 @@ struct ArticleDetailView: View {
                         .frame(width: w)
                     }
                 }
-                .ignoresSafeArea(edges: .top)
                 .onChange(of: webViewHeight) { _, _ in restoreScrollIfNeeded() }
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            if currentScrollOffset > 300 {
+            if showBackToTop {
                 Button {
                     scrollView?.setContentOffset(.zero, animated: true)
                 } label: {
@@ -183,8 +191,10 @@ struct ArticleDetailView: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: currentScrollOffset > 300)
+        .animation(.easeInOut(duration: 0.2), value: showBackToTop)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.miltonSurface, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 CircularProgressRing(progress: readingProgress)
@@ -244,14 +254,11 @@ private struct RelatedArticleRow: View {
     var body: some View {
         HStack(spacing: 12) {
             if let thumb = article.thumbnailURL {
-                AsyncImage(url: thumb) { img in
-                    img.resizable().scaledToFill()
-                } placeholder: {
-                    ShimmerView()
+                RemoteImage(url: thumb, targetWidth: 64) {
+                    Color.miltonPrimary.opacity(0.08)
                 }
                 .frame(width: 64, height: 64)
-                .cornerRadius(8)
-                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             VStack(alignment: .leading, spacing: 4) {

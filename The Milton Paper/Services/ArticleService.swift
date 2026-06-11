@@ -24,8 +24,7 @@ final class ArticleService {
     private var cachedList: [Article] = []
     private var lastFetch: Date?
     private let cacheTimeout: TimeInterval = 300
-
-    private let parser = RSSParser()
+    private var inFlightFetch: Task<[Article], Error>?
 
     // MARK: - Public API
 
@@ -37,20 +36,22 @@ final class ArticleService {
             return cachedList
         }
 
-        if Config.useMockData {
-            let articles = MockData.articles
-            updateCache(articles)
-            return articles
+        // Coalesce concurrent callers onto a single network fetch
+        if let inFlight = inFlightFetch {
+            return try await inFlight.value
         }
 
-        let articles: [Article]
-        if !Config.squarespaceAPIKey.isEmpty {
-            articles = try await fetchSquarespaceAPI()
-        } else {
-            articles = try await fetchRSS()
+        let task = Task { () async throws -> [Article] in
+            if Config.useMockData { return MockData.articles }
+            if !Config.squarespaceAPIKey.isEmpty { return try await self.fetchSquarespaceAPI() }
+            return try await self.fetchRSS()
         }
+        inFlightFetch = task
+        defer { inFlightFetch = nil }
+
+        let articles = try await task.value
         updateCache(articles)
-        return articles
+        return cachedList
     }
 
     func fetchArticle(id: String) async throws -> Article {
@@ -86,8 +87,20 @@ final class ArticleService {
     // MARK: - Private
 
     private func updateCache(_ articles: [Article]) {
-        cachedList = articles
-        cache = Dictionary(uniqueKeysWithValues: articles.map { ($0.id, $0) })
+        // The same story can appear in multiple category feeds; drop duplicates
+        // and carry bookmark flags over from the previous cache generation.
+        var seen = Set<String>()
+        var merged: [Article] = []
+        merged.reserveCapacity(articles.count)
+        for var article in articles {
+            guard seen.insert(article.id).inserted else { continue }
+            if let previous = cache[article.id] {
+                article.isBookmarked = previous.isBookmarked
+            }
+            merged.append(article)
+        }
+        cachedList = merged
+        cache = Dictionary(uniqueKeysWithValues: merged.map { ($0.id, $0) })
         lastFetch = Date()
     }
 

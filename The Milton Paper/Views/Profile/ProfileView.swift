@@ -5,6 +5,8 @@ struct ProfileView: View {
     @State private var showLoginPrompt = false
     @State private var inProgressArticles: [ReadingRecord] = []
     @State private var recentlyReadArticles: [ReadingRecord] = []
+    @State private var showDeleteConfirm = false
+    @State private var deleteErrorMessage: String?
 
     private let listCap = 3
 
@@ -24,6 +26,28 @@ struct ProfileView: View {
             .toolbarBackground(Color.miltonSurface, for: .navigationBar)
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
             .onAppear { loadReadingHistory() }
+            .alert("Delete Account?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    Task {
+                        let succeeded = await authViewModel.deleteAccount()
+                        if !succeeded {
+                            deleteErrorMessage = authViewModel.errorMessage
+                                ?? "Something went wrong. Please try again."
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently deletes your account and removes your bookmarks. This cannot be undone.")
+            }
+            .alert("Couldn't Delete Account", isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { deleteErrorMessage = nil }
+            } message: {
+                Text(deleteErrorMessage ?? "")
+            }
         }
     }
 
@@ -151,7 +175,7 @@ struct ProfileView: View {
                 }
             }
 
-            // Sign out
+            // Sign out / delete account
             Section {
                 Button(role: .destructive) {
                     authViewModel.signOut()
@@ -163,6 +187,20 @@ struct ProfileView: View {
                         Spacer()
                     }
                 }
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    HStack {
+                        Spacer()
+                        Text("Delete Account")
+                            .font(.system(size: 16, weight: .regular))
+                        Spacer()
+                    }
+                }
+            } footer: {
+                Text("Deleting your account permanently removes your sign-in and bookmarks.")
+                    .font(.miltonCaption)
+                    .foregroundColor(.miltonSecondary)
             }
         }
         .scrollContentBackground(.hidden)

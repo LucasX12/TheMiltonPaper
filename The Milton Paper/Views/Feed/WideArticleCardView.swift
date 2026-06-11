@@ -9,15 +9,8 @@ struct WideArticleCardView: View {
             // Full-width hero image
             ZStack(alignment: .bottomLeading) {
                 if let url = article.thumbnailURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        case .failure:
-                            placeholder
-                        default:
-                            ShimmerView()
-                        }
+                    RemoteImage(url: url, targetWidth: 400) {
+                        placeholder
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 190)

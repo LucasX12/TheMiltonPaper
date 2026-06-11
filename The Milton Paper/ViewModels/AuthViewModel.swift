@@ -37,6 +37,11 @@ final class AuthViewModel: ObservableObject {
     }
 
     func signUp(email: String, password: String, displayName: String) async {
+        let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            errorMessage = "Please enter a display name."
+            return
+        }
         guard validateEmail(email) else {
             errorMessage = AuthError.invalidEmail.errorDescription
             return
@@ -48,7 +53,7 @@ final class AuthViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         do {
-            try await authService.signUp(email: email, password: password, displayName: displayName)
+            try await authService.signUp(email: email, password: password, displayName: name)
             _ = await NotificationService.shared.requestPermission()
         } catch {
             errorMessage = friendlyError(error)
@@ -85,6 +90,25 @@ final class AuthViewModel: ObservableObject {
             try authService.signOut()
         } catch {
             errorMessage = friendlyError(error)
+        }
+    }
+
+    /// Returns true on success; on failure `errorMessage` explains why.
+    func deleteAccount() async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        do {
+            try await authService.deleteAccount()
+            isLoading = false
+            return true
+        } catch {
+            if AuthErrorCode(rawValue: (error as NSError).code) == .requiresRecentLogin {
+                errorMessage = "For security, please sign out, sign back in, and try deleting your account again."
+            } else {
+                errorMessage = friendlyError(error)
+            }
+            isLoading = false
+            return false
         }
     }
 

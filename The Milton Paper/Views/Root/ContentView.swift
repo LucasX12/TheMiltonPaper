@@ -21,6 +21,10 @@ struct ContentView: View {
             }
         }
         .environmentObject(authViewModel)
+        .task {
+            // Prewarm the article cache while the splash screen is visible
+            _ = try? await ArticleService.shared.fetchArticles()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .miltonNavigateToArticle)) { note in
             if note.userInfo?["articleId"] is String {
                 selectedTab = 0

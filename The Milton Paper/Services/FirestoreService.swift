@@ -46,6 +46,11 @@ final class FirestoreService {
         return AuthService.shared.currentUser?.role == .staff
     }
 
+    /// Removes everything stored locally for a user (called on account deletion).
+    func clearLocalData(uid: String) {
+        UserDefaults.standard.removeObject(forKey: bookmarkKeyPrefix + uid)
+    }
+
     // MARK: - Notification Topics
 
     func updateNotificationTopics(uid: String, topics: [String]) async throws {

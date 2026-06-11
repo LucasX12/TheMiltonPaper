@@ -45,15 +45,18 @@ struct SearchView: View {
                     }
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 0) {
+                        LazyVStack(spacing: 12) {
                             ForEach(filteredArticles) { article in
-                                ArticleCardView(article: article, onBookmark: nil)
-                                    .onTapGesture {
-                                        selectedArticle = article
-                                    }
+                                Button {
+                                    selectedArticle = article
+                                } label: {
+                                    ArticleCardView(article: article, onBookmark: nil)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                     }
                 }
             }

@@ -210,19 +210,33 @@ final class RSSParser: NSObject, XMLParserDelegate {
         return nil
     }
 
+    // Plain string conversion only: NSAttributedString's HTML importer is
+    // main-thread-only (WebKit-backed) and parsing happens off the main thread.
     private func stripHTML(_ html: String) -> String {
-        guard let data = html.data(using: .utf8) else { return html }
-        if let attr = try? NSAttributedString(
-            data: data,
-            options: [.documentType: NSAttributedString.DocumentType.html,
-                      .characterEncoding: String.Encoding.utf8.rawValue],
-            documentAttributes: nil
-        ) {
-            return attr.string.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        var result = html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-        for (entity, replacement) in [("&amp;","&"),("&lt;","<"),("&gt;",">"),("&nbsp;"," "),("&#39;","'"),("&quot;","\"")] {
+        var result = html
+        result = result.replacingOccurrences(of: "<br\\s*/?>", with: "\n",
+                                             options: [.regularExpression, .caseInsensitive])
+        result = result.replacingOccurrences(of: "</(p|div|h[1-6]|li)>", with: "\n",
+                                             options: [.regularExpression, .caseInsensitive])
+        result = result.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        for (entity, replacement) in [
+            ("&nbsp;", " "), ("&lt;", "<"), ("&gt;", ">"),
+            ("&#39;", "'"), ("&#039;", "'"), ("&apos;", "'"), ("&quot;", "\""),
+            ("&rsquo;", "\u{2019}"), ("&lsquo;", "\u{2018}"),
+            ("&rdquo;", "\u{201D}"), ("&ldquo;", "\u{201C}"),
+            ("&mdash;", "\u{2014}"), ("&ndash;", "\u{2013}"), ("&hellip;", "\u{2026}"),
+            ("&amp;", "&")
+        ] {
             result = result.replacingOccurrences(of: entity, with: replacement)
+        }
+        // Decode remaining numeric entities like &#8217;
+        while let range = result.range(of: "&#[0-9]{1,7};", options: .regularExpression) {
+            let digits = result[range].dropFirst(2).dropLast()
+            if let value = UInt32(digits), let scalar = Unicode.Scalar(value) {
+                result.replaceSubrange(range, with: String(Character(scalar)))
+            } else {
+                result.replaceSubrange(range, with: "")
+            }
         }
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
