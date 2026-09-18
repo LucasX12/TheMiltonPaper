@@ -10,6 +10,7 @@ extension Notification.Name {
 struct ArticleFeedView: View {
     @StateObject private var viewModel = ArticleFeedViewModel()
     @ObservedObject private var appConfiguration = AppConfiguration.shared
+    @ObservedObject private var homeModuleService = HomeModuleService.shared
     @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -17,10 +18,17 @@ struct ArticleFeedView: View {
     @State private var selectedArticle: Article?
     @State private var selectedSection: SectionDescriptor?
     @State private var showSearch = false
+    @State private var showMasthead = false
     @State private var showLoginPrompt = false
+    @State private var externalURL: IdentifiedURL?
 
     private var layout: EditorialLayout {
         EditorialLayout(articles: viewModel.filteredArticles, flags: appConfiguration.flags)
+    }
+
+    private var homeModules: [HomeModule] {
+        guard appConfiguration.flags.showHomeModules else { return [] }
+        return HomeModuleFilter.visible(homeModuleService.modules)
     }
 
     var body: some View {
@@ -41,6 +49,11 @@ struct ArticleFeedView: View {
             .background(Color.miltonBackground.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: $showSearch) { SearchView() }
+            .navigationDestination(isPresented: $showMasthead) { AboutView(initialTab: 1) }
+            .navigationDestination(item: $externalURL) { destination in
+                WebPageView(url: destination.url)
+                    .navigationBarTitleDisplayMode(.inline)
+            }
             .navigationDestination(item: $selectedArticle) { article in
                 ArticleDetailView(article: article)
             }
@@ -49,6 +62,7 @@ struct ArticleFeedView: View {
             }
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
             .task(id: authViewModel.currentUser?.uid) { await viewModel.loadArticles() }
+            .task { await homeModuleService.load() }
             .onChange(of: appConfiguration.flags) { _, flags in
                 if let selectedSection, !selectedSection.isVisible(flags: flags) {
                     self.selectedSection = nil
@@ -86,6 +100,9 @@ struct ArticleFeedView: View {
                         .padding(.bottom, 18)
                 }
 
+                HomeModulesSection(modules: homeModules.filter { $0.placement == .top },
+                                   onOpen: openModuleDestination)
+
                 if let lead = layout.lead {
                     LeadStoryView(article: lead, onBookmark: bookmarkAction(for: lead)) { selectedArticle = lead }
                 }
@@ -100,6 +117,9 @@ struct ArticleFeedView: View {
                     IssuePromoView()
                 }
 
+                HomeModulesSection(modules: homeModules.filter { $0.placement == .afterIssue },
+                                   onOpen: openModuleDestination)
+
                 if !layout.latest.isEmpty {
                     latestStories.padding(.top, 24)
                 }
@@ -108,16 +128,26 @@ struct ArticleFeedView: View {
             .padding(.bottom, 36)
             .editorialReadableColumn()
         }
-        .refreshable { await viewModel.refresh() }
+        .refreshable {
+            async let stories: Void = viewModel.refresh()
+            async let modules: Void = homeModuleService.load(forceRefresh: true)
+            _ = await (stories, modules)
+        }
     }
 
     private var masthead: some View {
         VStack(spacing: 3) {
-            Text("The Milton Paper")
-                .font(.custom("OldEnglishTextMT", size: 30, relativeTo: .title))
-                .foregroundColor(.miltonText)
-                .minimumScaleFactor(0.75)
-                .lineLimit(1)
+            Button { showMasthead = true } label: {
+                Text("The Milton Paper")
+                    .font(.custom("OldEnglishTextMT", size: 30, relativeTo: .title))
+                    .foregroundColor(.miltonText)
+                    .minimumScaleFactor(0.75)
+                    .lineLimit(1)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("The Milton Paper")
+            .accessibilityHint("Opens the masthead and about page")
+            .accessibilityIdentifier("masthead.logo")
 
             Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
                 .font(.custom("Georgia", size: 13, relativeTo: .footnote))
@@ -126,7 +156,6 @@ struct ArticleFeedView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 4)
         .padding(.bottom, 10)
-        .accessibilityElement(children: .combine)
         .overlay(alignment: .topTrailing) {
             Button { showSearch = true } label: {
                 Image(systemName: "magnifyingglass")
@@ -176,7 +205,7 @@ struct ArticleFeedView: View {
     private func inlineRefreshError(_ message: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text("Couldn’t refresh. The stories below may be out of date.")
-                .font(.miltonCaption)
+                .font(.miltonMeta)
                 .foregroundColor(.miltonSecondary)
             Spacer(minLength: 4)
             Button("Retry") { Task { await viewModel.refresh() } }
@@ -193,7 +222,7 @@ struct ArticleFeedView: View {
                 .font(.miltonTitle)
                 .foregroundColor(.miltonText)
             Text("Check back after the next story is published.")
-                .font(.miltonCaption)
+                .font(.miltonMeta)
                 .foregroundColor(.miltonSecondary)
                 .multilineTextAlignment(.center)
             Button("Refresh") { Task { await viewModel.refresh() } }
@@ -214,6 +243,28 @@ struct ArticleFeedView: View {
                 articles: viewModel.filteredArticles.filter { $0.matches(category: category) },
                 bookmarkAction: bookmarkAction
             )
+        }
+    }
+
+    /// An editor pastes a story's web address, never its RSS guid, so a link
+    /// that matches a story we already have opens in the reader; anything else
+    /// falls back to the in-app web view.
+    private func openModuleDestination(_ destination: HomeModuleDestination) {
+        switch destination {
+        case .article(let id):
+            Task {
+                if let article = try? await ArticleService.shared.fetchArticle(id: id) {
+                    selectedArticle = article
+                }
+            }
+        case .web(let url):
+            if let match = viewModel.articles.first(where: { $0.articleURL == url }) {
+                selectedArticle = match
+            } else {
+                externalURL = IdentifiedURL(url: url)
+            }
+        case .none:
+            break
         }
     }
 

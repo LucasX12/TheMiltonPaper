@@ -38,7 +38,7 @@ struct AuthorProfileView: View {
                                     .font(.miltonTitle)
                                     .foregroundColor(.miltonText)
                                 Text("\(articles.count) article\(articles.count == 1 ? "" : "s")")
-                                    .font(.miltonCaption)
+                                    .font(.miltonMeta)
                                     .foregroundColor(.miltonSecondary)
                             }
                         }

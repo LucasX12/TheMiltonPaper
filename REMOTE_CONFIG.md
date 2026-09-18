@@ -15,6 +15,7 @@ launch never removes content unexpectedly.
 | `show_sports` | Sports section and stories |
 | `show_aande` | A&E section and stories |
 | `show_editorial` | Editorial section and stories |
+| `show_home_modules` | Remotely-configured Today modules (see [HOME_MODULES.md](HOME_MODULES.md)) |
 
 ## One-time Firebase setup
 

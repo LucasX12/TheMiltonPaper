@@ -92,7 +92,7 @@ struct IssuePromoView: View {
 
                 VStack(alignment: .leading, spacing: 7) {
                     Text("THIS WEEK'S ISSUE")
-                        .font(.miltonLabel)
+                        .font(.miltonEyebrow)
                         .tracking(0.7)
                         .foregroundColor(.miltonSecondary)
 
@@ -146,7 +146,7 @@ private struct IssueReaderSkeleton: View {
                 .frame(maxWidth: 430)
                 .aspectRatio(0.72, contentMode: .fit)
             Text("Loading this week's issue…")
-                .font(.miltonCaption)
+                .font(.miltonMeta)
                 .foregroundColor(.miltonSecondary)
         }
         .padding(MiltonLayout.gutter)

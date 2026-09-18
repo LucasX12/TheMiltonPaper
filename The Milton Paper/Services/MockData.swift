@@ -106,4 +106,35 @@ enum MockData {
             thumbnailURL: nil
         )
     ]
+
+    /// Front-page modules for UI tests. Images are deliberately nil so test
+    /// launches never reach the network and screenshots stay deterministic.
+    static let homeModules: [HomeModule] = [
+        HomeModule(
+            id: "senior-of-the-week",
+            kind: .spotlight,
+            title: "Maya Patel",
+            subtitle: "Senior of the Week",
+            body: "Maya captained the debate team to a state title and spent her summer building soil sensors for local farms.",
+            linkURLString: "https://example.com/senior-of-the-week",
+            order: 10
+        ),
+        HomeModule(
+            id: "spring-sports",
+            kind: .rail,
+            title: "Spring Sports",
+            order: 20,
+            items: [
+                HomeModuleItem(id: "item-1", title: "Varsity Crew Opens at Home",
+                               subtitle: "Saturday, 9 a.m.",
+                               linkURLString: "https://example.com/crew", order: 10),
+                HomeModuleItem(id: "item-2", title: "Track Hosts the Invitational",
+                               subtitle: "Sunday, 1 p.m.",
+                               linkURLString: "https://example.com/track", order: 20),
+                HomeModuleItem(id: "item-3", title: "Lacrosse Travels to Nobles",
+                               subtitle: "Wednesday, 4 p.m.",
+                               linkURLString: "https://example.com/lacrosse", order: 30),
+            ]
+        ),
+    ]
 }

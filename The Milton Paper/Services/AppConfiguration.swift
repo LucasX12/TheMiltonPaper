@@ -12,6 +12,7 @@ struct FeatureFlags: Equatable {
     var showSports = true
     var showArtsEntertainment = true
     var showEditorial = true
+    var showHomeModules = true
 
     func showsFeedCategory(_ category: String) -> Bool {
         let normalized = category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -51,6 +52,7 @@ final class AppConfiguration: ObservableObject {
         static let showSports = "show_sports"
         static let showArtsEntertainment = "show_aande"
         static let showEditorial = "show_editorial"
+        static let showHomeModules = "show_home_modules"
     }
 
     private var remoteConfig: RemoteConfig?
@@ -67,6 +69,7 @@ final class AppConfiguration: ObservableObject {
             var testFlags = FeatureFlags()
             testFlags.showTMPlay = !ProcessInfo.processInfo.arguments.contains("-hideTMPlay")
             testFlags.showSports = !ProcessInfo.processInfo.arguments.contains("-hideSports")
+            testFlags.showHomeModules = !ProcessInfo.processInfo.arguments.contains("-hideHomeModules")
             flags = testFlags
             return
         }
@@ -92,6 +95,7 @@ final class AppConfiguration: ObservableObject {
             Key.showSports: true as NSNumber,
             Key.showArtsEntertainment: true as NSNumber,
             Key.showEditorial: true as NSNumber,
+            Key.showHomeModules: true as NSNumber,
         ])
         remoteConfig = config
         applyActivatedValues(from: config)
@@ -138,7 +142,8 @@ final class AppConfiguration: ObservableObject {
             showOpinion: remoteConfig[Key.showOpinion].boolValue,
             showSports: remoteConfig[Key.showSports].boolValue,
             showArtsEntertainment: remoteConfig[Key.showArtsEntertainment].boolValue,
-            showEditorial: remoteConfig[Key.showEditorial].boolValue
+            showEditorial: remoteConfig[Key.showEditorial].boolValue,
+            showHomeModules: remoteConfig[Key.showHomeModules].boolValue
         )
     }
 }

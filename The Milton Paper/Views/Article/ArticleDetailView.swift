@@ -245,7 +245,7 @@ private struct RelatedArticleRow: View {
                     .foregroundColor(.miltonText)
                     .lineLimit(3)
                 Text("By \(article.author) · \(article.publishedDate.miltonRelative)")
-                    .font(.miltonCaption)
+                    .font(.miltonMeta)
                     .foregroundColor(.miltonSecondary)
                     .lineLimit(1)
             }

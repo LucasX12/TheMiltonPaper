@@ -65,7 +65,7 @@ struct SearchView: View {
                 .font(.miltonTitle)
                 .foregroundColor(.miltonText)
             Text(detail)
-                .font(.miltonCaption)
+                .font(.miltonMeta)
                 .foregroundColor(.miltonSecondary)
         }
         .multilineTextAlignment(.center)

@@ -15,6 +15,16 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // "staff" is assigned by hand in the Firebase console and the users rules
+    // below never let a client grant it to itself, so this lookup is a safe
+    // authority check. It costs one read per write attempt and nothing on
+    // reads, which are public.
+    function isStaff() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.get('role', 'reader') == 'staff';
+    }
+
     // User profiles and bookmarks. Each user can only touch their own
     // document, and can never grant themselves the "staff" role — staff is
     // assigned manually in the Firebase console.
@@ -63,6 +73,41 @@ service cloud.firestore {
 
       // Users may delete their own scores (used by account deletion).
       allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    // Front-page modules edited in the Firebase console (spotlights and
+    // rails). Readers fetch these on the Today page before signing in, so
+    // reads are public; only staff may change what the front page says.
+    match /homeModules/{moduleId} {
+      allow read: if true;
+
+      allow create, update: if isStaff() && validModule();
+      allow delete: if isStaff();
+
+      function validModule() {
+        return request.resource.data.type in ['spotlight', 'rail']
+          && request.resource.data.title is string
+          && request.resource.data.title.size() >= 1
+          && request.resource.data.title.size() <= 200
+          && request.resource.data.enabled is bool
+          && request.resource.data.order is number
+          && request.resource.data.get('subtitle', '').size() <= 200
+          && request.resource.data.get('body', '').size() <= 2000
+          && request.resource.data.get('placement', 'afterIssue') in ['top', 'afterIssue'];
+      }
+
+      // The cards inside a rail module.
+      match /items/{itemId} {
+        allow read: if true;
+
+        allow create, update: if isStaff()
+          && request.resource.data.title is string
+          && request.resource.data.title.size() >= 1
+          && request.resource.data.title.size() <= 200
+          && request.resource.data.order is number
+          && request.resource.data.get('subtitle', '').size() <= 200;
+        allow delete: if isStaff();
+      }
     }
 
     // Everything else is denied by default.

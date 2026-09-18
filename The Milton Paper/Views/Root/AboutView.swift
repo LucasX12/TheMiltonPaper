@@ -59,7 +59,9 @@ private func classify(_ raw: String) -> [TextLine] {
 // MARK: - View
 
 struct AboutView: View {
-    @State private var selectedTab   = 0
+    /// 0 = About, 1 = Masthead. The front-page wordmark opens straight to the
+    /// masthead; the You tab keeps the default About landing.
+    @State private var selectedTab: Int
     @State private var aboutState    = FetchState.idle
     @State private var mastheadState = FetchState.idle
     @State private var subscribeURL  = URL(string: "https://www.themiltonpaper.com")!
@@ -71,6 +73,10 @@ struct AboutView: View {
 
     private let aboutURL    = URL(string: "https://www.themiltonpaper.com/about")!
     private let mastheadURL = URL(string: "https://www.themiltonpaper.com/masthead")!
+
+    init(initialTab: Int = 0) {
+        _selectedTab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         VStack(spacing: 0) {

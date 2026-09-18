@@ -24,7 +24,7 @@ struct ArticleHeaderView: View {
                     Spacer(minLength: 8)
 
                     Text("\(article.publishedDate.miltonFormatted) · \(article.estimatedReadTime) min read")
-                        .font(.miltonCaption)
+                        .font(.miltonMeta)
                         .foregroundColor(.miltonSecondary)
                 }
 
@@ -72,7 +72,7 @@ struct ArticleHeaderView: View {
                 .buttonStyle(.plain)
             }
         }
-        .font(.miltonCaption.weight(.semibold))
+        .font(.miltonMeta.weight(.semibold))
         .foregroundColor(.miltonText)
     }
 

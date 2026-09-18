@@ -101,7 +101,7 @@ struct EditorialCategoryLabel: View {
 
     var body: some View {
         Text(category.uppercased())
-            .font(.miltonLabel)
+            .font(.miltonEyebrow)
             .tracking(0.7)
             .foregroundColor(.miltonSecondary)
     }
@@ -142,7 +142,7 @@ struct StoryMetadataView: View {
                 .accessibilityLabel(article.isBookmarked ? "Remove bookmark" : "Save story")
             }
         }
-        .font(.miltonCaption)
+        .font(.miltonMeta)
         .foregroundColor(.miltonSecondary)
     }
 

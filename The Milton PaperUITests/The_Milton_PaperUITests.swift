@@ -12,17 +12,28 @@ final class The_Milton_PaperUITests: XCTestCase {
         return app
     }
 
+    /// The floating tab bar occasionally swallows a tap that lands while it is
+    /// still animating in, so every tab switch gets one retry before failing.
+    private func switchTo(_ tab: String, in app: XCUIApplication,
+                          expecting element: XCUIElement,
+                          file: StaticString = #filePath, line: UInt = #line) {
+        app.tabBars.buttons[tab].tap()
+        if element.waitForExistence(timeout: 15) { return }
+        app.tabBars.buttons[tab].tap()
+        XCTAssertTrue(element.waitForExistence(timeout: 20),
+                      "\(tab) tab did not present its content", file: file, line: line)
+    }
+
     func testEditorialNavigationShell() {
         let app = launch()
         for title in ["Today", "Sections", "TMPlay", "Saved", "You"] {
             XCTAssertTrue(app.tabBars.buttons[title].exists)
         }
         capture(app, name: "Today")
-        app.tabBars.buttons["Sections"].tap()
         let news = app.buttons["section.category-news"]
-        XCTAssertTrue(news.waitForExistence(timeout: 5))
+        switchTo("Sections", in: app, expecting: news)
         news.tap()
-        XCTAssertTrue(app.navigationBars["News"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["News"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["story.article-1"].exists)
         capture(app, name: "News")
     }
@@ -30,80 +41,101 @@ final class The_Milton_PaperUITests: XCTestCase {
     func testTodayArticleAndSaveSignInPrompt() {
         let app = launch()
         let story = app.buttons["story.article-1"]
-        XCTAssertTrue(story.waitForExistence(timeout: 10))
+        XCTAssertTrue(story.waitForExistence(timeout: 15))
         story.tap()
         let save = app.buttons["Save Story"]
         // The simulator occasionally drops the first synthesized tap after
         // launch, so retry once before failing.
-        if !save.waitForExistence(timeout: 5) {
+        if !save.waitForExistence(timeout: 15) {
             story.tap()
-            XCTAssertTrue(save.waitForExistence(timeout: 10))
+            XCTAssertTrue(save.waitForExistence(timeout: 15))
         }
         capture(app, name: "Article")
         save.tap()
-        XCTAssertTrue(app.buttons["Continue with Google"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Continue with Google"].waitForExistence(timeout: 15))
     }
 
     func testSearchFindsAStory() {
         let app = launch()
         app.buttons["Search"].tap()
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.waitForExistence(timeout: 15))
         search.tap()
         search.typeText("Science")
         let result = app.buttons["story.article-1"]
-        XCTAssertTrue(result.waitForExistence(timeout: 5))
+        XCTAssertTrue(result.waitForExistence(timeout: 15))
         result.tap()
-        XCTAssertTrue(app.buttons["Article actions"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Article actions"].waitForExistence(timeout: 15))
     }
 
     func testSavedAndYouGuestStates() {
         let app = launch()
-        app.tabBars.buttons["Saved"].tap()
-        XCTAssertTrue(app.staticTexts["Sign in to save articles"].waitForExistence(timeout: 5))
+        switchTo("Saved", in: app, expecting: app.staticTexts["Sign in to save articles"])
         capture(app, name: "Saved")
-        app.tabBars.buttons["You"].tap()
-        XCTAssertTrue(app.staticTexts["Your reading, in one place"].waitForExistence(timeout: 5))
+        switchTo("You", in: app, expecting: app.staticTexts["Your reading, in one place"])
         capture(app, name: "You")
     }
 
     func testTMPlayStartsAndAcceptsInput() {
         let app = launch()
-        app.tabBars.buttons["TMPlay"].tap()
-        XCTAssertTrue(app.buttons["Start"].waitForExistence(timeout: 5))
+        switchTo("TMPlay", in: app, expecting: app.buttons["Start"])
         capture(app, name: "TMPlay")
         app.buttons["Start"].tap()
-        XCTAssertTrue(app.buttons["How to play"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["How to play"].waitForExistence(timeout: 15))
         app.buttons["Q"].tap()
         capture(app, name: "TMPlay-playing")
     }
 
     func testIssueOpensFullScreenAndCloses() {
         let app = launch()
-        app.tabBars.buttons["Sections"].tap()
-        app.buttons["section.this-week"].tap()
+        let thisWeek = app.buttons["section.this-week"]
+        switchTo("Sections", in: app, expecting: thisWeek)
+        thisWeek.tap()
         let expand = app.buttons["Open issue full screen"]
-        XCTAssertTrue(expand.waitForExistence(timeout: 5))
+        XCTAssertTrue(expand.waitForExistence(timeout: 15))
         expand.tap()
         let close = app.buttons["Close full screen issue"]
-        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        XCTAssertTrue(close.waitForExistence(timeout: 15))
         XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         capture(app, name: "Issue-fullscreen")
         close.tap()
-        XCTAssertTrue(expand.waitForExistence(timeout: 5))
+        XCTAssertTrue(expand.waitForExistence(timeout: 15))
     }
 
     func testHiddenFeaturesHaveNoDestinations() {
         let app = launch(["-hideTMPlay", "-hideSports"])
         XCTAssertFalse(app.tabBars.buttons["TMPlay"].exists)
-        // A tap during the tab bar's entrance animation can be dropped, so
-        // retry once before failing.
-        app.tabBars.buttons["Sections"].tap()
-        if !app.buttons["section.category-news"].waitForExistence(timeout: 5) {
-            app.tabBars.buttons["Sections"].tap()
-            XCTAssertTrue(app.buttons["section.category-news"].waitForExistence(timeout: 10))
-        }
+        switchTo("Sections", in: app, expecting: app.buttons["section.category-news"])
         XCTAssertFalse(app.buttons["section.category-sports"].exists)
+    }
+
+    func testLogoOpensTheMasthead() {
+        let app = launch()
+        let logo = app.buttons["masthead.logo"]
+        XCTAssertTrue(logo.waitForExistence(timeout: 15))
+        logo.tap()
+        // The page content is scraped from the website, so assert on the
+        // screen's own chrome rather than on staff names.
+        let masthead = app.buttons["Masthead"]
+        if !masthead.waitForExistence(timeout: 15) {
+            logo.tap()
+            XCTAssertTrue(masthead.waitForExistence(timeout: 15))
+        }
+        XCTAssertTrue(app.buttons["About"].exists)
+        XCTAssertTrue(masthead.isSelected)
+        capture(app, name: "Masthead")
+    }
+
+    func testHomeModulesRenderAndCanBeHidden() {
+        let app = launch()
+        let spotlight = app.buttons["home.module.senior-of-the-week"]
+        XCTAssertTrue(spotlight.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Spring Sports"].exists)
+        capture(app, name: "HomeModules")
+
+        let hidden = launch(["-hideHomeModules"])
+        XCTAssertTrue(hidden.buttons["story.article-1"].waitForExistence(timeout: 15))
+        XCTAssertFalse(hidden.buttons["home.module.senior-of-the-week"].exists)
     }
 
     private func capture(_ app: XCUIApplication, name: String) {

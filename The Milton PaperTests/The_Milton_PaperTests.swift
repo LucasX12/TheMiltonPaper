@@ -128,3 +128,155 @@ struct EditorialLayoutTests {
         )
     }
 }
+
+
+struct HomeModuleTests {
+    private let now = Date(timeIntervalSince1970: 2_000_000_000)
+
+    // MARK: - Parsing console-typed documents
+
+    @Test func parsesAWellFormedSpotlight() {
+        let module = HomeModule(documentID: "senior", data: [
+            "type": "spotlight", "title": "Maya Patel", "subtitle": "Senior of the Week",
+            "body": "A sentence.", "order": 10, "enabled": true,
+            "linkURL": "https://example.com/story",
+        ])
+        #expect(module?.kind == .spotlight)
+        #expect(module?.title == "Maya Patel")
+        #expect(module?.placement == .afterIssue)
+        #expect(module?.destination == .web(URL(string: "https://example.com/story")!))
+        #expect(module?.resolvedActionLabel == "Read more")
+    }
+
+    @Test func coercesValuesTypedAsTheWrongKind() {
+        let module = HomeModule(documentID: "m", data: [
+            "type": "  Spotlight ", "title": "  Title  ", "enabled": "true", "order": "20",
+        ])
+        #expect(module?.kind == .spotlight)
+        #expect(module?.title == "Title")
+        #expect(module?.isEnabled == true)
+        #expect(module?.order == 20)
+    }
+
+    @Test func rejectsDocumentsThatCannotBeRendered() {
+        #expect(HomeModule(documentID: "m", data: ["title": "No type"]) == nil)
+        #expect(HomeModule(documentID: "m", data: ["type": "banner", "title": "Bad type"]) == nil)
+        #expect(HomeModule(documentID: "m", data: ["type": "spotlight"]) == nil)
+        #expect(HomeModule(documentID: "m", data: ["type": "spotlight", "title": "   "]) == nil)
+    }
+
+    @Test func unsafeDefaultsFailClosedAndUnknownFieldsAreIgnored() {
+        let module = HomeModule(documentID: "m", data: [
+            "type": "spotlight", "title": "Half built", "somethingElse": 42,
+        ])
+        // A document the editor saved and walked away from must not go live.
+        #expect(module?.isEnabled == false)
+        // Missing order sorts last rather than jumping the queue.
+        #expect(module?.order == 1_000)
+        #expect(module?.placement == .afterIssue)
+    }
+
+    @Test func typoedPlacementFallsBackToTheSafeSlot() {
+        let module = HomeModule(documentID: "m", data: [
+            "type": "spotlight", "title": "T", "placement": "bottom",
+        ])
+        #expect(module?.placement == .afterIssue)
+    }
+
+    @Test func onlyHTTPSchemesBecomeTappableDestinations() {
+        for bad in ["javascript:alert(1)", "file:///etc/passwd", "not a url", "https://", "ftp://x.com"] {
+            let module = HomeModule(documentID: "m", data: [
+                "type": "spotlight", "title": "T", "linkURL": bad, "imageURL": bad,
+            ])
+            #expect(module?.linkURL == nil)
+            #expect(module?.imageURL == nil)
+            #expect(module?.destination == HomeModuleDestination.none)
+        }
+    }
+
+    @Test func articleIDWinsOverLink() {
+        let module = HomeModule(documentID: "m", data: [
+            "type": "spotlight", "title": "T",
+            "articleID": "article-1", "linkURL": "https://example.com",
+        ])
+        #expect(module?.destination == .article("article-1"))
+    }
+
+    @Test func datesParseFromEveryShapeAConsoleCanProduce() {
+        let epoch = HomeModule(documentID: "m", data: [
+            "type": "spotlight", "title": "T", "startsAt": 2_000_000_000 as NSNumber,
+        ])
+        #expect(epoch?.startsAt == now)
+
+        let native = HomeModule(documentID: "m", data: [
+            "type": "spotlight", "title": "T", "startsAt": now,
+        ])
+        #expect(native?.startsAt == now)
+
+        let iso = HomeModule(documentID: "m", data: [
+            "type": "spotlight", "title": "T", "startsAt": "2033-05-18T03:33:20Z",
+        ])
+        #expect(iso?.startsAt == now)
+    }
+
+    // MARK: - Visibility and ordering
+
+    @Test func disabledAndOutOfWindowModulesAreHidden() {
+        #expect(!spotlight("a", enabled: false).isVisible(at: now))
+        #expect(spotlight("b").isVisible(at: now))
+        #expect(!spotlight("c", startsAt: now.addingTimeInterval(60)).isVisible(at: now))
+        #expect(!spotlight("d", endsAt: now.addingTimeInterval(-60)).isVisible(at: now))
+    }
+
+    @Test func theScheduleWindowIsHalfOpen() {
+        // Starting exactly now counts as started; ending exactly now is over.
+        #expect(spotlight("a", startsAt: now).isVisible(at: now))
+        #expect(!spotlight("b", endsAt: now).isVisible(at: now))
+    }
+
+    @Test func modulesSortByOrderThenIDAndAreCapped() {
+        let modules = [spotlight("c", order: 30), spotlight("a", order: 10), spotlight("b", order: 20)]
+        #expect(HomeModuleFilter.visible(modules, at: now).map(\.id) == ["a", "b", "c"])
+
+        let tied = [spotlight("z", order: 10), spotlight("y", order: 10)]
+        let first = HomeModuleFilter.visible(tied, at: now).map(\.id)
+        #expect(first == ["y", "z"])
+        #expect(HomeModuleFilter.visible(tied, at: now).map(\.id) == first)
+
+        let many = (0..<5).map { spotlight("m\($0)", order: Double($0)) }
+        #expect(HomeModuleFilter.visible(many, at: now).map(\.id) == ["m0", "m1", "m2"])
+    }
+
+    @Test func emptyInputAndEmptyRailsProduceNothing() {
+        #expect(HomeModuleFilter.visible([], at: now).isEmpty)
+        #expect(!rail("r", items: []).isVisible(at: now))
+        #expect(!rail("r", items: [HomeModuleItem(id: "i", title: "T", isEnabled: false)]).isVisible(at: now))
+        #expect(rail("r", items: [HomeModuleItem(id: "i", title: "T")]).isVisible(at: now))
+    }
+
+    @Test func railItemsAreSortedFilteredAndCapped() {
+        let items = (0..<20).map { HomeModuleItem(id: "i\($0)", title: "T\($0)", order: Double(20 - $0)) }
+        let module = rail("r", items: items)
+        #expect(module.renderableItems.count == HomeModuleFilter.maxItemsPerRail)
+        #expect(module.renderableItems.first?.id == "i19")
+    }
+
+    @Test func railItemsDefaultToVisible() {
+        // An editor who adds a card means to show it, so items fail open.
+        let item = HomeModuleItem(documentID: "i", data: ["title": "Card"])
+        #expect(item?.isEnabled == true)
+        #expect(HomeModuleItem(documentID: "i", data: ["subtitle": "no title"]) == nil)
+    }
+
+    // MARK: - Helpers
+
+    private func spotlight(_ id: String, order: Double = 10, enabled: Bool = true,
+                           startsAt: Date? = nil, endsAt: Date? = nil) -> HomeModule {
+        HomeModule(id: id, kind: .spotlight, title: "Module \(id)", order: order,
+                   isEnabled: enabled, startsAt: startsAt, endsAt: endsAt)
+    }
+
+    private func rail(_ id: String, items: [HomeModuleItem]) -> HomeModule {
+        HomeModule(id: id, kind: .rail, title: "Rail \(id)", order: 10, items: items)
+    }
+}
