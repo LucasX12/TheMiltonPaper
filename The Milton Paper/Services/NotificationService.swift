@@ -41,7 +41,8 @@ final class NotificationService {
             topics.forEach { subscribeToTopic($0) }
         } else {
             [Config.topicNewArticles, Config.topicNews,
-             Config.topicOpinion, Config.topicSports, Config.topicEditorial]
+             Config.topicOpinion, Config.topicSports,
+             Config.topicArtsEntertainment, Config.topicEditorial]
                 .forEach { unsubscribeFromTopic($0) }
         }
     }

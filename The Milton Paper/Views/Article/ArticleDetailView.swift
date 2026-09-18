@@ -1,8 +1,6 @@
 import SwiftUI
 import UIKit
 
-// MARK: - UIKit scroll progress bridge
-
 private final class ScrollTrackerUIView: UIView {
     var onScroll: (Double, CGFloat) -> Void
     var onScrollViewReady: ((UIScrollView) -> Void)?
@@ -14,6 +12,7 @@ private final class ScrollTrackerUIView: UIView {
         isUserInteractionEnabled = false
         backgroundColor = .clear
     }
+
     required init?(coder: NSCoder) { fatalError() }
 
     override func didMoveToWindow() {
@@ -29,56 +28,52 @@ private final class ScrollTrackerUIView: UIView {
     }
 
     private func findAndAttach() {
-        var v: UIView? = superview
-        while let candidate = v {
-            if let sv = candidate as? UIScrollView {
-                onScrollViewReady?(sv)
-                token = sv.observe(\.contentOffset, options: .new) { [weak self] sv, _ in
-                    let contentH  = sv.contentSize.height
-                    let viewportH = sv.bounds.height
-                    guard contentH > viewportH + 120 else { return }
-                    let offset    = max(0, sv.contentOffset.y)
-                    let scrollable = contentH - viewportH
-                    let progress  = min(1.0, offset / scrollable)
-                    if Thread.isMainThread {
-                        self?.onScroll(progress, offset)
-                    } else {
-                        DispatchQueue.main.async { self?.onScroll(progress, offset) }
-                    }
+        var view: UIView? = superview
+        while let candidate = view {
+            if let scrollView = candidate as? UIScrollView {
+                DispatchQueue.main.async { [weak self, weak scrollView] in
+                    if let scrollView { self?.onScrollViewReady?(scrollView) }
+                }
+                token = scrollView.observe(\.contentOffset, options: .new) { [weak self] scrollView, _ in
+                    let scrollable = scrollView.contentSize.height - scrollView.bounds.height
+                    guard scrollable > 120 else { return }
+                    let offset = max(0, scrollView.contentOffset.y)
+                    let progress = min(1, offset / scrollable)
+                    DispatchQueue.main.async { self?.onScroll(progress, offset) }
                 }
                 return
             }
-            v = candidate.superview
+            view = candidate.superview
         }
     }
 }
 
 private struct ScrollProgressTracker: UIViewRepresentable {
     let onScroll: (Double, CGFloat) -> Void
-    let onScrollViewReady: ((UIScrollView) -> Void)?
+    let onScrollViewReady: (UIScrollView) -> Void
 
     func makeUIView(context: Context) -> ScrollTrackerUIView {
         let view = ScrollTrackerUIView(onScroll: onScroll)
         view.onScrollViewReady = onScrollViewReady
         return view
     }
+
     func updateUIView(_ uiView: ScrollTrackerUIView, context: Context) {
         uiView.onScroll = onScroll
+        uiView.onScrollViewReady = onScrollViewReady
     }
 }
-
-// MARK: - Article detail view
 
 struct ArticleDetailView: View {
     @StateObject private var viewModel: ArticleDetailViewModel
     @EnvironmentObject private var authViewModel: AuthViewModel
+
     @State private var showLoginPrompt = false
     @State private var webViewHeight: CGFloat = 400
     @State private var readingProgress: Double = 0
     @State private var lastScrollOffset: CGFloat = 0
     @State private var scrollView: UIScrollView?
     @State private var hasRestoredScroll = false
-    @State private var showBackToTop = false
 
     let initialScrollOffset: CGFloat
 
@@ -88,149 +83,139 @@ struct ArticleDetailView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.miltonBackground.ignoresSafeArea()
+        GeometryReader { geometry in
+            let contentWidth = min(geometry.size.width, MiltonLayout.readableWidth)
 
-            GeometryReader { geo in
-                let w = geo.size.width
-                ScrollView {
-                    ZStack(alignment: .top) {
-                        // Only touch state when something meaningful changes —
-                        // a state write here re-renders the whole article view.
-                        ScrollProgressTracker(
-                            onScroll: { progress, offset in
-                                let shouldShow = offset > 300
-                                if shouldShow != showBackToTop { showBackToTop = shouldShow }
-                                guard progress > readingProgress else { return }
-                                let crossedEnd = progress >= 0.99 && readingProgress < 0.99
-                                if progress - readingProgress >= 0.005 || crossedEnd {
-                                    readingProgress = progress
-                                    lastScrollOffset = offset
-                                    if crossedEnd { saveReadingProgress() }
-                                }
-                            },
-                            onScrollViewReady: { sv in scrollView = sv }
+            ScrollView {
+                ZStack(alignment: .top) {
+                    ScrollProgressTracker(
+                        onScroll: trackScroll,
+                        onScrollViewReady: { scrollView = $0 }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .allowsHitTesting(false)
+
+                    VStack(spacing: 0) {
+                        ArticleHeaderView(article: viewModel.article, width: contentWidth)
+
+                        ArticleBodyView(
+                            htmlContent: viewModel.article.bodyHTML,
+                            baseURL: viewModel.article.articleURL,
+                            contentHeight: $webViewHeight,
+                            viewWidth: contentWidth
                         )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .allowsHitTesting(false)
+                        .frame(width: contentWidth, height: max(400, webViewHeight))
+                        .padding(.top, 12)
 
-                        VStack(spacing: 0) {
-                            ArticleHeaderView(article: viewModel.article, width: w)
-
-                            ArticleBodyView(
-                                htmlContent: viewModel.article.bodyHTML,
-                                baseURL: viewModel.article.articleURL,
-                                contentHeight: $webViewHeight,
-                                viewWidth: w
-                            )
-                            .frame(width: w, height: max(400, webViewHeight))
-                            .padding(.top, 8)
-
-                            Link(destination: viewModel.article.articleURL) {
-                                HStack(spacing: 6) {
-                                    Text("Read on miltonpaper.com")
-                                    Image(systemName: "arrow.up.right")
-                                }
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.miltonPrimary)
-                                .padding(.vertical, 16)
-                            }
-
-                            // Related articles
-                            if !viewModel.relatedArticles.isEmpty {
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text("More from \(viewModel.article.category)")
-                                        .font(.miltonLabel)
-                                        .foregroundColor(.miltonSecondary)
-                                        .padding(.horizontal, 20)
-                                        .padding(.top, 20)
-                                        .padding(.bottom, 12)
-
-                                    Divider().padding(.horizontal, 20)
-
-                                    ForEach(viewModel.relatedArticles) { related in
-                                        NavigationLink(destination: ArticleDetailView(article: related)) {
-                                            RelatedArticleRow(article: related)
-                                        }
-                                        .buttonStyle(.plain)
-
-                                        if related.id != viewModel.relatedArticles.last?.id {
-                                            Divider().padding(.horizontal, 20)
-                                        }
-                                    }
-                                }
-                                .background(Color.miltonSurface)
-                                .cornerRadius(12)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 8)
-                            }
-
-                            Spacer(minLength: 40)
-                        }
-                        .frame(width: w)
+                        relatedStories
+                        Spacer(minLength: 44)
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                // Image-led articles run to the physical top of the screen,
-                // under the floating glass toolbar buttons; text-only
-                // articles start below them so the title is never covered.
-                .ignoresSafeArea(edges: viewModel.article.thumbnailURL != nil ? Edge.Set.top : [])
-                .onChange(of: webViewHeight) { _, _ in restoreScrollIfNeeded() }
             }
+            .onChange(of: webViewHeight) { _, _ in restoreScrollIfNeeded() }
         }
-        .overlay(alignment: .bottomTrailing) {
-            if showBackToTop {
-                Button {
-                    scrollView?.setContentOffset(.zero, animated: true)
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.miltonPrimary)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
-                }
-                .padding(.trailing, 20)
-                .padding(.bottom, 24)
-                .transition(.scale.combined(with: .opacity))
+        .background(Color.miltonBackground.ignoresSafeArea())
+        .overlay(alignment: .topLeading) {
+            GeometryReader { geometry in
+                Rectangle()
+                    .fill(Color.miltonPrimary)
+                    .frame(width: geometry.size.width * readingProgress, height: 2)
+                    .animation(.linear(duration: 0.12), value: readingProgress)
             }
+            .frame(height: 2)
+            .accessibilityHidden(true)
         }
-        .animation(.easeInOut(duration: 0.2), value: showBackToTop)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(Color.miltonBackground, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                CircularProgressRing(progress: readingProgress)
-                    .animation(.linear(duration: 0.15), value: readingProgress)
-            }
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                ShareButton(article: viewModel.article)
-                Button {
-                    if authViewModel.isAuthenticated {
-                        Task { await viewModel.toggleBookmark() }
-                    } else {
-                        showLoginPrompt = true
-                    }
-                } label: {
-                    Image(systemName: viewModel.article.isBookmarked ? "bookmark.fill" : "bookmark")
-                        .foregroundColor(viewModel.article.isBookmarked ? .miltonAccent : .miltonPrimary)
-                }
-                .accessibilityLabel(viewModel.article.isBookmarked ? "Remove bookmark" : "Bookmark article")
-            }
+            ToolbarItem(placement: .topBarTrailing) { saveButton }
+            ToolbarItem(placement: .topBarTrailing) { articleActions }
         }
-        .task { await viewModel.checkBookmarkStatus() }
+        .task(id: authViewModel.currentUser?.uid) { await viewModel.checkBookmarkStatus() }
         .task { await viewModel.loadRelatedArticles() }
         .sheet(isPresented: $showLoginPrompt) { LoginView() }
+        .alert("Couldn't update Saved", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { viewModel.errorMessage = nil }
+        } message: { Text(viewModel.errorMessage ?? "") }
         .onDisappear { saveReadingProgress() }
     }
 
+    private var saveButton: some View {
+        Button {
+            if authViewModel.isAuthenticated {
+                Task { await viewModel.toggleBookmark() }
+            } else {
+                showLoginPrompt = true
+            }
+        } label: {
+            Image(systemName: viewModel.article.isBookmarked ? "bookmark.fill" : "bookmark")
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel(viewModel.article.isBookmarked ? "Remove from Saved" : "Save Story")
+    }
+
+    private var articleActions: some View {
+        Menu {
+            ShareLink(item: viewModel.article.articleURL, subject: Text(viewModel.article.title)) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+
+            Link(destination: viewModel.article.articleURL) {
+                Label("Open on Website", systemImage: "arrow.up.right.square")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel("Article actions")
+    }
+
+    @ViewBuilder
+    private var relatedStories: some View {
+        if !viewModel.relatedArticles.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                EditorialRule()
+                Text("More from \(viewModel.article.category)")
+                    .font(.miltonSectionTitle)
+                    .foregroundColor(.miltonText)
+                    .padding(.vertical, 16)
+                EditorialRule()
+
+                ForEach(Array(viewModel.relatedArticles.enumerated()), id: \.element.id) { index, related in
+                    NavigationLink(destination: ArticleDetailView(article: related)) {
+                        RelatedArticleRow(article: related)
+                    }
+                    .buttonStyle(.plain)
+                    if index < viewModel.relatedArticles.count - 1 { EditorialRule() }
+                }
+            }
+            .padding(.horizontal, MiltonLayout.gutter)
+            .frame(maxWidth: MiltonLayout.readableWidth)
+        }
+    }
+
+    private func trackScroll(_ progress: Double, _ offset: CGFloat) {
+        lastScrollOffset = offset
+        guard progress > readingProgress else { return }
+        let crossedEnd = progress >= 0.99 && readingProgress < 0.99
+        if progress - readingProgress >= 0.005 || crossedEnd {
+            readingProgress = progress
+            if crossedEnd { saveReadingProgress() }
+        }
+    }
+
     private func restoreScrollIfNeeded() {
-        guard !hasRestoredScroll, initialScrollOffset > 10, let sv = scrollView else { return }
-        let contentH  = sv.contentSize.height
-        let viewportH = sv.bounds.height
-        guard contentH > viewportH + 120 else { return }
-        let clamped = min(initialScrollOffset, contentH - viewportH)
-        sv.setContentOffset(CGPoint(x: 0, y: clamped), animated: false)
+        guard !hasRestoredScroll, initialScrollOffset > 10, let scrollView else { return }
+        let scrollable = scrollView.contentSize.height - scrollView.bounds.height
+        guard scrollable > 120 else { return }
+        scrollView.setContentOffset(
+            CGPoint(x: 0, y: min(initialScrollOffset, scrollable)),
+            animated: false
+        )
         hasRestoredScroll = true
     }
 
@@ -249,38 +234,31 @@ struct ArticleDetailView: View {
     }
 }
 
-// MARK: - Related article row
-
 private struct RelatedArticleRow: View {
     let article: Article
 
     var body: some View {
-        HStack(spacing: 12) {
-            if let thumb = article.thumbnailURL {
-                RemoteImage(url: thumb, targetWidth: 64) {
-                    Color.miltonPrimary.opacity(0.08)
-                }
-                .frame(width: 64, height: 64)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(article.title)
-                    .font(.miltonBody)
+                    .font(.miltonStoryTitle)
                     .foregroundColor(.miltonText)
-                    .lineLimit(2)
-                Text(article.author)
+                    .lineLimit(3)
+                Text("By \(article.author) · \(article.publishedDate.miltonRelative)")
                     .font(.miltonCaption)
                     .foregroundColor(.miltonSecondary)
+                    .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.miltonSecondary.opacity(0.4))
+            if let thumbnail = article.thumbnailURL {
+                RemoteImage(url: thumbnail, targetWidth: 90) { Color.miltonRule.opacity(0.5) }
+                    .frame(width: 88, height: 66)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius))
+            }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
     }
 }

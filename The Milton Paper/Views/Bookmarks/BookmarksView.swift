@@ -14,18 +14,23 @@ struct BookmarksView: View {
 
                 if !authViewModel.isAuthenticated {
                     unauthenticatedState
-                } else if viewModel.isLoading {
-                    LoadingView()
+                } else if viewModel.isLoading && viewModel.bookmarkedArticles.isEmpty {
+                    EditorialFeedSkeleton()
+                } else if let error = viewModel.errorMessage,
+                          viewModel.bookmarkedArticles.isEmpty {
+                    ErrorView(message: error) {
+                        Task { await viewModel.loadBookmarks() }
+                    }
                 } else if viewModel.bookmarkedArticles.isEmpty {
                     emptyState
                 } else {
                     bookmarkList
                 }
             }
-            .navigationTitle("Bookmarks")
+            .navigationTitle("Saved")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(Color.miltonSurface, for: .navigationBar)
-            .task {
+            .task(id: authViewModel.currentUser?.uid) {
                 if authViewModel.isAuthenticated {
                     await viewModel.loadBookmarks()
                 }
@@ -34,6 +39,9 @@ struct BookmarksView: View {
                 ArticleDetailView(article: article)
             }
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
+            .onReceive(NotificationCenter.default.publisher(for: .miltonBookmarkChanged)) { _ in
+                Task { await viewModel.loadBookmarks() }
+            }
             .alert("Remove Bookmark?", isPresented: Binding(
                 get: { pendingDeleteOffsets != nil },
                 set: { if !$0 { pendingDeleteOffsets = nil } }
@@ -53,27 +61,27 @@ struct BookmarksView: View {
 
     private var bookmarkList: some View {
         List {
+            if let error = viewModel.errorMessage {
+                InlineRetryView(message: error) { Task { await viewModel.loadBookmarks() } }
+            }
             ForEach(viewModel.bookmarkedArticles) { article in
-                ArticleCardView(article: article)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 0, trailing: 16))
+                ArticleCardView(article: article, onSelect: { selectedArticle = article })
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowBackground(Color.miltonBackground)
-                    .listRowSeparator(.hidden)
-                    .onTapGesture { selectedArticle = article }
+                    .listRowSeparatorTint(Color.miltonSecondary.opacity(0.22))
             }
             .onDelete { offsets in
                 pendingDeleteOffsets = offsets
             }
         }
         .listStyle(.plain)
+        .editorialReadableColumn()
         .background(Color.miltonBackground)
         .refreshable { await viewModel.loadBookmarks() }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "bookmark")
-                .font(.system(size: 52))
-                .foregroundColor(.miltonSecondary.opacity(0.3))
+        VStack(spacing: 12) {
             Text("No saved articles yet")
                 .font(.miltonTitle)
                 .foregroundColor(.miltonSecondary)
@@ -86,10 +94,7 @@ struct BookmarksView: View {
     }
 
     private var unauthenticatedState: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "person.crop.circle.badge.exclamationmark")
-                .font(.system(size: 52))
-                .foregroundColor(.miltonSecondary.opacity(0.4))
+        VStack(spacing: 14) {
             Text("Sign in to save articles")
                 .font(.miltonTitle)
                 .foregroundColor(.miltonText)

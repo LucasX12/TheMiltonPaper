@@ -46,18 +46,21 @@ struct AuthorProfileView: View {
 
                         Divider()
 
-                        LazyVStack(spacing: 12) {
-                            ForEach(articles) { article in
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(articles.enumerated()), id: \.element.id) { index, article in
                                 NavigationLink {
                                     ArticleDetailView(article: article)
                                 } label: {
                                     ArticleCardView(article: article, onBookmark: nil)
-                                        .padding(.horizontal, 16)
                                 }
                                 .buttonStyle(.plain)
+
+                                if index < articles.count - 1 {
+                                    Divider()
+                                }
                             }
                         }
-                        .padding(.top, 12)
+                        .padding(.horizontal, 16)
 
                         Spacer(minLength: 24)
                     }

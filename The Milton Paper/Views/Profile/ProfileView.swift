@@ -9,352 +9,121 @@ struct ProfileView: View {
     @State private var showDeleteConfirm = false
     @State private var deleteErrorMessage: String?
 
-    private let listCap = 3
-
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.miltonBackground.ignoresSafeArea()
+            List {
+                Section {
+                    if let user = authViewModel.currentUser {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(user.displayName).font(.miltonTitle)
+                            Text(user.email).font(.miltonCaption).foregroundStyle(Color.miltonSecondary)
+                            if user.role == .staff {
+                                Text("Staff").font(.miltonCaption)
+                            }
+                        }.padding(.vertical, 10)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Your reading, in one place").font(.miltonTitle)
+                            Text("Sign in to save stories across your devices. Your reading history stays on this device.")
+                                .font(.miltonBody).foregroundStyle(Color.miltonSecondary)
+                            Button("Sign In") { showLoginPrompt = true }
+                                .font(.headline).frame(minHeight: 44)
+                        }.padding(.vertical, 10)
+                    }
+                }
 
-                if authViewModel.isAuthenticated, let user = authViewModel.currentUser {
-                    authenticatedContent(user: user)
-                } else {
-                    unauthenticatedContent
+                historySection("Continue reading", records: inProgressArticles,
+                               empty: "Stories you start will appear here.")
+                historySection("Recently read", records: recentlyReadArticles,
+                               empty: "Stories you finish will appear here.")
+
+                Section("Preferences") {
+                    NavigationLink("Notification preferences") { NotificationSettingsView() }
+                    if authViewModel.currentUser?.role == .staff {
+                        NavigationLink("Staff dashboard") { StaffDashboardView() }
+                    }
+                }
+
+                Section("The Milton Paper") {
+                    NavigationLink("About The Milton Paper") { AboutView() }
+                    Link("Contact support", destination: URL(string: "mailto:\(Config.supportEmail)")!)
+                    LabeledContent("Version", value: appVersion)
+                        .foregroundStyle(Color.miltonSecondary)
+                    if let user = authViewModel.currentUser {
+                        LabeledContent("Member since", value: user.joinedDate.miltonFormatted)
+                            .foregroundStyle(Color.miltonSecondary)
+                    }
+                }
+
+                if authViewModel.isAuthenticated {
+                    Section {
+                        Button("Sign Out", role: .destructive) { showSignOutConfirm = true }
+                        Button("Delete Account", role: .destructive) { showDeleteConfirm = true }
+                            .disabled(authViewModel.isLoading)
+                    } footer: {
+                        Text("Deleting your account permanently removes your sign-in and saved stories.")
+                    }
                 }
             }
-            .navigationTitle("Profile")
+            .listStyle(.plain)
+            .listRowSpacing(0)
+            .scrollContentBackground(.hidden)
+            .editorialReadableColumn()
+            .background(Color.miltonBackground.ignoresSafeArea())
+            .navigationTitle("You")
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(Color.miltonSurface, for: .navigationBar)
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
             .onAppear { loadReadingHistory() }
             .alert("Sign Out?", isPresented: $showSignOutConfirm) {
-                Button("Sign Out", role: .destructive) {
-                    authViewModel.signOut()
-                }
+                Button("Sign Out", role: .destructive) { authViewModel.signOut() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("You can sign back in at any time. Your bookmarks are saved to your account.")
+                Text("You can sign back in at any time. Your saved stories stay with your account.")
             }
             .alert("Delete Account?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {
                     Task {
-                        let succeeded = await authViewModel.deleteAccount()
-                        if !succeeded {
-                            deleteErrorMessage = authViewModel.errorMessage
-                                ?? "Something went wrong. Please try again."
+                        if !(await authViewModel.deleteAccount()) {
+                            deleteErrorMessage = authViewModel.errorMessage ?? "Please try again."
                         }
                     }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This permanently deletes your account and removes your bookmarks. This cannot be undone.")
+                Text("This permanently deletes your account and saved stories. This cannot be undone.")
             }
             .alert("Couldn't Delete Account", isPresented: Binding(
                 get: { deleteErrorMessage != nil },
                 set: { if !$0 { deleteErrorMessage = nil } }
             )) {
                 Button("OK", role: .cancel) { deleteErrorMessage = nil }
-            } message: {
-                Text(deleteErrorMessage ?? "")
-            }
+            } message: { Text(deleteErrorMessage ?? "") }
         }
     }
 
-    // MARK: - Authenticated
-
-    private func authenticatedContent(user: AppUser) -> some View {
-        List {
-            // Avatar + name
-            Section {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.miltonPrimary)
-                            .frame(width: 56, height: 56)
-                        Text(user.displayName.prefix(1).uppercased())
-                            .font(.custom("Georgia", size: 22).weight(.semibold))
-                            .foregroundColor(.white)
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(user.displayName)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.miltonText)
-                        Text(user.email)
-                            .font(.miltonCaption)
-                            .foregroundColor(.miltonSecondary)
-                    }
-                    Spacer()
-                    roleBadge(user.role)
-                }
-                .padding(.vertical, 4)
-            }
-
-            // Pick up where you left off
-            Section("Pick Up Where You Left Off") {
-                if inProgressArticles.isEmpty {
-                    Text("No articles in progress")
-                        .font(.miltonCaption)
-                        .foregroundColor(.miltonSecondary)
-                        .padding(.vertical, 4)
-                } else {
-                    ForEach(inProgressArticles.prefix(listCap)) { record in
-                        NavigationLink {
-                            ReadingResumeView(record: record)
-                        } label: {
-                            ReadingRecordRow(record: record)
-                        }
-                    }
-                    if inProgressArticles.count > listCap {
-                        NavigationLink {
-                            ReadingHistoryListView(title: "In Progress", records: inProgressArticles)
-                        } label: {
-                            Text("See All (\(inProgressArticles.count))")
-                                .font(.miltonCaption)
-                                .foregroundColor(.miltonPrimary)
-                        }
+    private func historySection(_ title: String, records: [ReadingRecord], empty: String) -> some View {
+        Section(title) {
+            if records.isEmpty {
+                Text(empty).font(.miltonCaption).foregroundStyle(Color.miltonSecondary)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(records.prefix(3)) { record in
+                    NavigationLink { ReadingResumeView(record: record) } label: {
+                        ReadingRecordRow(record: record)
                     }
                 }
-            }
-
-            // Recently read
-            Section("Recently Read") {
-                if recentlyReadArticles.isEmpty {
-                    Text("Articles you finish will appear here")
-                        .font(.miltonCaption)
-                        .foregroundColor(.miltonSecondary)
-                        .padding(.vertical, 4)
-                } else {
-                    ForEach(recentlyReadArticles.prefix(listCap)) { record in
-                        NavigationLink {
-                            ReadingResumeView(record: record)
-                        } label: {
-                            ReadingRecordRow(record: record)
-                        }
-                    }
-                    if recentlyReadArticles.count > listCap {
-                        NavigationLink {
-                            ReadingHistoryListView(title: "Recently Read", records: recentlyReadArticles)
-                        } label: {
-                            Text("See All (\(recentlyReadArticles.count))")
-                                .font(.miltonCaption)
-                                .foregroundColor(.miltonPrimary)
-                        }
-                    }
-                }
-            }
-
-            // Settings
-            Section("Preferences") {
-                NavigationLink {
-                    NotificationSettingsView()
-                } label: {
-                    Label("Notification Preferences", systemImage: "bell")
-                        .foregroundColor(.miltonText)
-                }
-
-                if user.role == .staff {
-                    NavigationLink {
-                        StaffDashboardView()
-                    } label: {
-                        Label("Staff Dashboard", systemImage: "briefcase")
-                            .foregroundColor(.miltonText)
-                    }
-                }
-            }
-
-            // About
-            Section("About") {
-                LabeledContent("Member since") {
-                    Text(user.joinedDate.miltonFormatted)
-                        .font(.miltonCaption)
-                        .foregroundColor(.miltonSecondary)
-                }
-                Button {
-                    if let url = URL(string: "mailto:\(Config.supportEmail)") {
-                        UIApplication.shared.open(url)
-                    }
-                } label: {
-                    Label("Contact Support", systemImage: "envelope")
-                        .foregroundColor(.miltonText)
-                }
-                LabeledContent("Version") {
-                    Text(appVersion)
-                        .font(.miltonCaption)
-                        .foregroundColor(.miltonSecondary)
-                }
-            }
-
-            // Sign out and delete account as two distinct cards
-            Section {
-                Button(role: .destructive) {
-                    showSignOutConfirm = true
-                } label: {
-                    HStack {
-                        Spacer()
-                        Text("Sign Out")
-                            .font(.system(size: 16, weight: .semibold))
-                        Spacer()
-                    }
-                }
-            }
-
-            Section {
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: {
-                    HStack {
-                        Spacer()
-                        Text("Delete Account")
-                            .font(.system(size: 16, weight: .regular))
-                        Spacer()
-                    }
-                }
-            } footer: {
-                Text("Deleting your account permanently removes your sign-in and bookmarks.")
-                    .font(.miltonCaption)
-                    .foregroundColor(.miltonSecondary)
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Color.miltonBackground)
-    }
-
-    // MARK: - Unauthenticated
-
-    private var unauthenticatedContent: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                Image(systemName: "person.circle")
-                    .font(.system(size: 60))
-                    .foregroundColor(.miltonSecondary.opacity(0.3))
-
-                VStack(spacing: 8) {
-                    Text("You're not signed in")
-                        .font(.miltonTitle)
-                        .foregroundColor(.miltonText)
-                    Text("Sign in to manage bookmarks, notifications, and your reading history.")
-                        .font(.miltonCaption)
-                        .foregroundColor(.miltonSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                }
-
-                Button {
-                    showLoginPrompt = true
-                } label: {
-                    Text("Sign In")
-                        .miltonPrimaryButton()
-                }
-                .padding(.horizontal, 48)
-
-                readingHistorySection
-                    .padding(.top, 8)
-
-                Text("v\(appVersion)")
-                    .font(.miltonCaption)
-                    .foregroundColor(.miltonSecondary.opacity(0.6))
-                    .padding(.top, 16)
-            }
-            .padding(.top, 60)
-            .padding(.bottom, 40)
-        }
-    }
-
-    private var readingHistorySection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // In progress
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Pick Up Where You Left Off")
-                    .font(.miltonLabel)
-                    .foregroundColor(.miltonSecondary)
-                    .padding(.horizontal, 16)
-
-                if inProgressArticles.isEmpty {
-                    Text("No articles in progress")
-                        .font(.miltonCaption)
-                        .foregroundColor(.miltonSecondary.opacity(0.6))
-                        .padding(.horizontal, 16)
-                } else {
-                    ForEach(inProgressArticles.prefix(listCap)) { record in
-                        NavigationLink {
-                            ReadingResumeView(record: record)
-                        } label: {
-                            ReadingRecordRow(record: record)
-                                .padding(.horizontal, 16)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    if inProgressArticles.count > listCap {
-                        NavigationLink {
-                            ReadingHistoryListView(title: "In Progress", records: inProgressArticles)
-                        } label: {
-                            Text("See All (\(inProgressArticles.count))")
-                                .font(.miltonCaption)
-                                .foregroundColor(.miltonPrimary)
-                                .padding(.horizontal, 16)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            // Recently read
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Recently Read")
-                    .font(.miltonLabel)
-                    .foregroundColor(.miltonSecondary)
-                    .padding(.horizontal, 16)
-
-                if recentlyReadArticles.isEmpty {
-                    Text("Articles you finish will appear here")
-                        .font(.miltonCaption)
-                        .foregroundColor(.miltonSecondary.opacity(0.6))
-                        .padding(.horizontal, 16)
-                } else {
-                    ForEach(recentlyReadArticles.prefix(listCap)) { record in
-                        NavigationLink {
-                            ReadingResumeView(record: record)
-                        } label: {
-                            ReadingRecordRow(record: record)
-                                .padding(.horizontal, 16)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    if recentlyReadArticles.count > listCap {
-                        NavigationLink {
-                            ReadingHistoryListView(title: "Recently Read", records: recentlyReadArticles)
-                        } label: {
-                            Text("See All (\(recentlyReadArticles.count))")
-                                .font(.miltonCaption)
-                                .foregroundColor(.miltonPrimary)
-                                .padding(.horizontal, 16)
-                        }
-                        .buttonStyle(.plain)
+                if records.count > 3 {
+                    NavigationLink("See all") {
+                        ReadingHistoryListView(title: title, records: records)
                     }
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
-
-    // MARK: - Helpers
 
     private func loadReadingHistory() {
         inProgressArticles = ReadingProgressService.shared.inProgress
         recentlyReadArticles = ReadingProgressService.shared.recentlyCompleted
-    }
-
-    private func roleBadge(_ role: UserRole) -> some View {
-        Text(role == .staff ? "Staff" : "Reader")
-            .font(.miltonLabel)
-            .foregroundColor(role == .staff ? .miltonAccent : .miltonSecondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(
-                Capsule().fill(
-                    role == .staff ? Color.miltonAccent.opacity(0.15) : Color.miltonSecondary.opacity(0.1)
-                )
-            )
     }
 
     private var appVersion: String {
@@ -379,13 +148,19 @@ struct ReadingRecordRow: View {
                     .foregroundColor(.miltonSecondary)
             }
             Spacer()
-            VStack(spacing: 3) {
-                CircularProgressRing(progress: record.progress, size: 28, lineWidth: 3)
-                if !record.isCompleted {
-                    Text("~\(Int(record.progress * 100))%")
-                        .font(.system(size: 10))
-                        .foregroundColor(.miltonSecondary)
+            VStack(alignment: .trailing, spacing: 5) {
+                Text(record.isCompleted ? "Read" : "\(Int(record.progress * 100))%")
+                    .font(.miltonCaption)
+                    .foregroundColor(.miltonSecondary)
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle().fill(Color.miltonRule)
+                        Rectangle()
+                            .fill(Color.miltonPrimary)
+                            .frame(width: geometry.size.width * record.progress)
+                    }
                 }
+                .frame(width: 40, height: 2)
             }
         }
         .padding(.vertical, 4)

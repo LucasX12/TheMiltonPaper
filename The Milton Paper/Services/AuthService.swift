@@ -17,6 +17,8 @@ final class AuthService: ObservableObject {
     private var stateListener: AuthStateDidChangeListenerHandle?
 
     init() {
+        // UI tests always start as a guest and never touch a saved account.
+        guard !Config.isUITesting else { return }
         stateListener = Auth.auth().addStateDidChangeListener { [weak self] _, firebaseUser in
             Task { @MainActor [weak self] in
                 guard let self else { return }

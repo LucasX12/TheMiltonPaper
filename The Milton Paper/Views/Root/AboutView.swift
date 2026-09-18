@@ -130,7 +130,7 @@ struct AboutView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Color.miltonPrimary)
-                            .cornerRadius(10)
+                            .cornerRadius(4)
                     }
                     .padding(.horizontal, 28)
                     .padding(.bottom, 48)

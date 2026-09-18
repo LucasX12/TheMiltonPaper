@@ -23,13 +23,15 @@ struct WordlePageView: View {
                         Image(systemName: "list.number")
                             .font(.system(size: 18))
                             .foregroundColor(.miltonPrimary)
+                            .frame(width: 44, height: 44)
                     }
+                    .accessibilityLabel("Leaderboard")
 
                     Spacer()
 
                     VStack(spacing: 2) {
-                        Text("MORDLE")
-                            .font(.custom("Georgia", size: 22).weight(.bold))
+                    Text("TMPlay")
+                            .font(.system(.title2, design: .serif, weight: .bold))
                             .foregroundColor(.miltonText)
                         if viewModel.phase == .playing {
                             Text(timeString(viewModel.elapsedSeconds))
@@ -48,7 +50,9 @@ struct WordlePageView: View {
                         Image(systemName: "questionmark.circle")
                             .font(.system(size: 18))
                             .foregroundColor(.miltonPrimary)
+                            .frame(width: 44, height: 44)
                     }
+                    .accessibilityLabel("How to play")
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
@@ -63,7 +67,7 @@ struct WordlePageView: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
                         .background(Color.black.opacity(0.78))
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous))
                         .padding(.top, 6)
                         .transition(.opacity)
                 }
@@ -134,7 +138,7 @@ struct WordlePageView: View {
 struct WordleCoverOverlay: View {
     let onStart: () -> Void
 
-    private let exampleLetters = ["M", "O", "R", "D", "L"]
+    private let exampleLetters = ["P", "A", "P", "E", "R"]
     private let exampleStates: [LetterState] = [.correct, .present, .absent, .empty, .empty]
 
     var body: some View {
@@ -144,8 +148,8 @@ struct WordleCoverOverlay: View {
 
             VStack(spacing: 36) {
                 VStack(spacing: 10) {
-                    Text("MORDLE")
-                        .font(.custom("Georgia", size: 42).weight(.bold))
+                        Text("TMPlay")
+                        .font(.system(.largeTitle, design: .serif, weight: .bold))
                         .foregroundColor(.miltonText)
 
                     Text("Guess the 5-letter word of the day")
@@ -167,7 +171,7 @@ struct WordleCoverOverlay: View {
                         .foregroundColor(.white)
                         .frame(width: 200, height: 52)
                         .background(Color.miltonPrimary)
-                        .cornerRadius(13)
+                        .cornerRadius(4)
                 }
             }
             .padding(.horizontal, 32)
@@ -235,7 +239,7 @@ struct WordleTile: View {
         .frame(width: size, height: size)
         .scaleEffect(bounceScale)
         .rotation3DEffect(.degrees(flipAngle), axis: (x: 1, y: 0, z: 0))
-        .onChange(of: letter) { newLetter in
+        .onChange(of: letter) { _, newLetter in
             // Spring pop when a letter is typed
             guard !newLetter.isEmpty else { return }
             withAnimation(.spring(response: 0.1, dampingFraction: 0.5)) {
@@ -247,7 +251,7 @@ struct WordleTile: View {
                 }
             }
         }
-        .onChange(of: state) { newState in
+        .onChange(of: state) { _, newState in
             guard newState == .correct || newState == .present || newState == .absent else {
                 revealed = newState
                 return
@@ -330,7 +334,7 @@ struct WordleKeyButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous)
                     .fill(keyColor)
                 Text(key)
                     .font(.system(size: key == "ENTER" ? 10 : 14, weight: .semibold))
@@ -403,8 +407,11 @@ struct WordleResultCard: View {
         }
         .padding(24)
         .background(Color.miltonSurface)
-        .cornerRadius(18)
-        .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 6)
+        .cornerRadius(4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.miltonRule, lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -475,7 +482,7 @@ struct WordleHelpOverlay: View {
 
                 Divider()
 
-                Text("Mordle is inspired by Wordle by The New York Times.")
+                Text("TMPlay is inspired by Wordle by The New York Times.")
                     .font(.system(size: 11))
                     .foregroundColor(.miltonSecondary.opacity(0.7))
                     .multilineTextAlignment(.center)
@@ -483,7 +490,11 @@ struct WordleHelpOverlay: View {
             }
             .padding(24)
             .background(Color.miltonSurface)
-            .cornerRadius(20)
+            .cornerRadius(4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.miltonRule, lineWidth: 1)
+            )
             .padding(.horizontal, 20)
         }
     }

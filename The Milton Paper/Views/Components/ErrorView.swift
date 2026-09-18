@@ -5,12 +5,12 @@ struct ErrorView: View {
     var retryAction: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 14) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 44))
+                .font(.system(size: 22, weight: .regular))
                 .foregroundColor(.miltonAccent)
 
-            Text("Something went wrong")
+            Text("We couldn't load the paper")
                 .font(.miltonTitle)
                 .foregroundColor(.miltonText)
 
@@ -25,7 +25,7 @@ struct ErrorView: View {
                     Text("Try Again")
                         .miltonPrimaryButton()
                 }
-                .padding(.horizontal, 48)
+                .frame(maxWidth: 220)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

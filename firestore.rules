@@ -7,7 +7,7 @@ rules_version = '2';
 //
 // Without these rules (e.g. while the database is in "test mode"), any client
 // can read and write every document — including other users' profiles and
-// Mordle scores.
+// TMPlay scores.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -39,7 +39,7 @@ service cloud.firestore {
       }
     }
 
-    // Daily Mordle leaderboard. Document ID format: "<yyyy-MM-dd>_<uid>".
+    // Daily TMPlay leaderboard. Document ID format: "<yyyy-MM-dd>_<uid>".
     match /wordleScores/{scoreId} {
       // Anyone can view the leaderboard (the app shows it to guests too).
       allow read: if true;

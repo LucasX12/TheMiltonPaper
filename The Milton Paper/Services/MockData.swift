@@ -60,7 +60,7 @@ enum MockData {
             title: "Drama Department's 'Hamlet' Earns Standing Ovation on Opening Night",
             author: "Sofia Rodriguez",
             publishedDate: Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date(),
-            category: "Arts",
+            category: Config.categoryArtsEntertainment,
             summary: "The fall production of Shakespeare's Hamlet, directed by drama teacher Mr. Harrington, drew 400 audience members and earned a thunderous standing ovation for its modern reimagining.",
             bodyHTML: """
 <p>There's a moment in Act III when Hamlet — played here by senior Daniel Abrams in a black hoodie and sneakers — looks directly into the audience and whispers "To be or not to be." Friday night, you could have heard a pin drop.</p>

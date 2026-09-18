@@ -41,6 +41,8 @@ struct NotificationSettingsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .listStyle(.plain)
+            .editorialReadableColumn()
             .background(Color.miltonBackground)
         }
         .navigationTitle("Notification Preferences")

@@ -5,72 +5,71 @@ struct FeaturedArticleView: View {
     var onBookmark: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Hero image — omitted entirely when the article has no photo
+        VStack(alignment: .leading, spacing: 12) {
             if let url = article.thumbnailURL {
-                ZStack(alignment: .bottomLeading) {
-                    RemoteImage(url: url, targetWidth: 400) {
-                        heroPlaceholder
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
-                    .clipped()
-
-                    // Gradient overlay
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.55)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-
-                    TagChipView(category: article.category, style: .solid)
-                        .padding(14)
+                RemoteImage(url: url, targetWidth: 420) {
+                    heroPlaceholder
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 210)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous))
             }
 
-            // Content
-            VStack(alignment: .leading, spacing: 8) {
-                if article.thumbnailURL == nil {
-                    TagChipView(category: article.category)
-                }
+            HStack(alignment: .firstTextBaseline) {
+                Text(article.category.uppercased())
+                    .font(.miltonLabel)
+                    .tracking(0.8)
+                    .foregroundColor(Color.categoryColor(for: article.category))
 
-                Text(article.title)
-                    .font(.miltonHeadline)
-                    .foregroundColor(.miltonText)
-                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
 
+                Text(article.publishedDate.miltonRelative)
+                    .font(.miltonCaption)
+                    .foregroundColor(.miltonSecondary)
+            }
+
+            Text(article.title)
+                .font(.miltonHeadline)
+                .foregroundColor(.miltonText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !article.summary.isEmpty {
                 Text(article.summary)
                     .font(.miltonBody)
                     .foregroundColor(.miltonSecondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-                HStack {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 11))
-                        Text("By \(article.author)")
-                        Text("·")
-                        Text(article.publishedDate.miltonFormatted)
-                    }
-                    .font(.miltonCaption)
-                    .foregroundColor(.miltonSecondary)
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("By \(article.author)")
+                        .fontWeight(.medium)
+                        .foregroundColor(.miltonText)
+                        .lineLimit(1)
 
-                    Spacer()
-
-                    if let onBookmark {
-                        Button(action: onBookmark) {
-                            Image(systemName: article.isBookmarked ? "bookmark.fill" : "bookmark")
-                                .font(.system(size: 17))
-                                .foregroundColor(article.isBookmarked ? .miltonAccent : .miltonSecondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(article.isBookmarked ? "Remove bookmark" : "Bookmark article")
+                    HStack(spacing: 5) {
+                        Text("\(article.estimatedReadTime) min read")
                     }
                 }
+
+                Spacer(minLength: 8)
+
+                if let onBookmark {
+                    Button(action: onBookmark) {
+                        Image(systemName: article.isBookmarked ? "bookmark.fill" : "bookmark")
+                            .font(.system(size: 16))
+                            .foregroundColor(article.isBookmarked ? .miltonAccent : .miltonSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(article.isBookmarked ? "Remove bookmark" : "Bookmark article")
+                }
             }
-            .padding(16)
+            .font(.miltonCaption)
+            .foregroundColor(.miltonSecondary)
         }
-        .miltonCardStyle()
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Featured: \(article.title), by \(article.author)")
     }
@@ -78,9 +77,9 @@ struct FeaturedArticleView: View {
     private var heroPlaceholder: some View {
         ZStack {
             Color.miltonPrimary.opacity(0.1)
-            Image(systemName: "newspaper.fill")
-                .font(.system(size: 48, weight: .ultraLight))
-                .foregroundColor(.miltonPrimary.opacity(0.25))
+            Text("The Milton Paper")
+                .font(.custom("OldEnglishTextMT", size: 34))
+                .foregroundColor(.miltonPrimary.opacity(0.22))
         }
     }
 }

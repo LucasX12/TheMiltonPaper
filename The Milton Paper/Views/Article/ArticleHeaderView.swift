@@ -1,59 +1,59 @@
 import SwiftUI
 import UIKit
 
-private let kArticleHorizontalPadding: CGFloat = 24
-
 struct ArticleHeaderView: View {
     let article: Article
     var width: CGFloat = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.width ?? 393
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Hero image — articles without a photo open straight on the title
-            if let url = article.thumbnailURL {
-                RemoteImage(url: url, targetWidth: width) {
-                    heroPlaceholder
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 240)
-                .clipped()
-            }
-
+        VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
-                TagChipView(category: article.category)
-                    .onTapGesture {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Button {
                         NotificationCenter.default.post(
                             name: .miltonNavigateToCategory,
                             object: nil,
                             userInfo: ["category": article.category]
                         )
+                    } label: {
+                        EditorialCategoryLabel(category: article.category)
+                            .frame(minHeight: 44)
                     }
+                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 8)
+
+                    Text("\(article.publishedDate.miltonFormatted) · \(article.estimatedReadTime) min read")
+                        .font(.miltonCaption)
+                        .foregroundColor(.miltonSecondary)
+                }
 
                 Text(article.title)
                     .font(.miltonHeadline)
                     .foregroundColor(.miltonText)
+                    .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Byline
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        bylineView(for: article.author)
-                        HStack(spacing: 6) {
-                            Text(article.publishedDate.miltonFormatted)
-                            Text("·")
-                            Text("\(article.estimatedReadTime) min read")
-                        }
-                        .font(.miltonCaption)
+                if !article.summary.isEmpty {
+                    Text(article.summary)
+                        .font(.system(.title3, design: .serif))
                         .foregroundColor(.miltonSecondary)
-                    }
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Divider()
-                    .background(Color.miltonSecondary.opacity(0.2))
+                bylineView(for: article.author)
             }
-            .padding(.horizontal, kArticleHorizontalPadding)
-            .padding(.top, article.thumbnailURL == nil ? 12 : 0)
+            .padding(.horizontal, MiltonLayout.gutter)
+            .padding(.top, 22)
+            .padding(.bottom, 18)
+
+            if let url = article.thumbnailURL {
+                RemoteImage(url: url, targetWidth: width) { heroPlaceholder }
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipped()
+            }
         }
         .frame(width: width, alignment: .leading)
     }
@@ -61,34 +61,28 @@ struct ArticleHeaderView: View {
     @ViewBuilder
     private func bylineView(for authorString: String) -> some View {
         let authors = authorString.components(separatedBy: " and ")
-        HStack(spacing: 0) {
-            Text("By ")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.miltonText)
-            ForEach(authors.indices, id: \.self) { i in
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(authors.indices, id: \.self) { index in
                 NavigationLink {
-                    AuthorProfileView(author: authors[i])
+                    AuthorProfileView(author: authors[index])
                 } label: {
-                    Text(authors[i])
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.miltonPrimary)
+                    Text("\(index == 0 ? "By " : "and ")\(authors[index])")
+                        .frame(minHeight: 44, alignment: .leading)
                 }
                 .buttonStyle(.plain)
-                if i < authors.count - 1 {
-                    Text(" and ")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.miltonText)
-                }
             }
         }
+        .font(.miltonCaption.weight(.semibold))
+        .foregroundColor(.miltonText)
     }
 
     private var heroPlaceholder: some View {
-        ZStack {
-            Color.miltonPrimary.opacity(0.08)
-            Image(systemName: "newspaper.fill")
-                .font(.system(size: 60, weight: .ultraLight))
-                .foregroundColor(.miltonPrimary.opacity(0.2))
-        }
+        Rectangle()
+            .fill(Color.miltonRule.opacity(0.55))
+            .overlay {
+                Text("The Milton Paper")
+                    .font(.system(.title2, design: .serif, weight: .bold))
+                    .foregroundColor(.miltonSecondary.opacity(0.6))
+            }
     }
 }

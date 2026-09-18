@@ -45,6 +45,7 @@ final class ReadingProgressService {
     static let shared = ReadingProgressService()
     private let key = "reading.history.v1"
     private let maxRecords = 50
+    private var testRecords: [ReadingRecord] = []
 
     private init() {}
 
@@ -64,6 +65,7 @@ final class ReadingProgressService {
     }
 
     func loadAll() -> [ReadingRecord] {
+        if Config.isUITesting { return testRecords }
         guard let data = UserDefaults.standard.data(forKey: key),
               let records = try? JSONDecoder().decode([ReadingRecord].self, from: data) else {
             return []
@@ -80,6 +82,10 @@ final class ReadingProgressService {
     }
 
     private func save(_ records: [ReadingRecord]) {
+        if Config.isUITesting {
+            testRecords = records
+            return
+        }
         if let data = try? JSONEncoder().encode(records) {
             UserDefaults.standard.set(data, forKey: key)
         }

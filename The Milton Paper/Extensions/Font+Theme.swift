@@ -1,9 +1,12 @@
 import SwiftUI
 
 extension Font {
-    static let miltonHeadline = Font.custom("Georgia", size: 28).weight(.bold)
-    static let miltonTitle    = Font.custom("Georgia", size: 20).weight(.semibold)
-    static let miltonBody     = Font.system(size: 16, weight: .regular, design: .serif)
-    static let miltonCaption  = Font.system(size: 13, weight: .regular, design: .default)
-    static let miltonLabel    = Font.system(size: 11, weight: .medium, design: .default).smallCaps()
+    static let miltonDisplay      = Font.system(.largeTitle, design: .serif, weight: .bold)
+    static let miltonHeadline     = Font.system(.title, design: .serif, weight: .bold)
+    static let miltonSectionTitle = Font.system(.title2, design: .serif, weight: .bold)
+    static let miltonTitle        = Font.system(.title3, design: .serif, weight: .semibold)
+    static let miltonStoryTitle   = Font.system(.headline, design: .serif, weight: .semibold)
+    static let miltonBody         = Font.system(.body, design: .serif)
+    static let miltonCaption      = Font.system(.caption, design: .default)
+    static let miltonLabel        = Font.system(.caption2, design: .default, weight: .semibold).smallCaps()
 }

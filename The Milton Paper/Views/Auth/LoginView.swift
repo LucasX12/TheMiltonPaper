@@ -91,8 +91,8 @@ struct LoginView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .background(Color.miltonSurface)
-                                .cornerRadius(10)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.miltonSecondary.opacity(0.3), lineWidth: 1))
+                                .cornerRadius(4)
+                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.miltonRule, lineWidth: 1))
                             }
                             .disabled(authViewModel.isLoading)
 
@@ -109,8 +109,8 @@ struct LoginView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .background(Color.miltonSurface)
-                                .cornerRadius(10)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.miltonSecondary.opacity(0.3), lineWidth: 1))
+                                .cornerRadius(4)
+                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.miltonRule, lineWidth: 1))
                             }
                             .disabled(authViewModel.isLoading)
 
@@ -186,8 +186,8 @@ struct MiltonTextField: View {
                 .disableAutocorrection(true)
                 .padding(12)
                 .background(Color.miltonSurface)
-                .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.miltonSecondary.opacity(0.25), lineWidth: 1))
+                .cornerRadius(4)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.miltonRule, lineWidth: 1))
         }
     }
 }
@@ -206,8 +206,8 @@ struct MiltonSecureField: View {
                 .textContentType(textContentType)
                 .padding(12)
                 .background(Color.miltonSurface)
-                .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.miltonSecondary.opacity(0.25), lineWidth: 1))
+                .cornerRadius(4)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.miltonRule, lineWidth: 1))
         }
     }
 }

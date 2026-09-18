@@ -1,119 +1,199 @@
-import SwiftUI
 import PDFKit
-
-// MARK: - This Week View
+import SwiftUI
 
 struct ThisWeekView: View {
-    @State private var pdfDocument: PDFDocument?
-    @State private var isLoading = true
-    @State private var loadError: String?
-
-    // Session cache so swiping between categories doesn't re-download the issue
-    private static let pdfCache = NSCache<NSString, PDFDocument>()
-    private static let pdfCacheKey: NSString = "latest-issue"
+    @ObservedObject private var issueService = IssueService.shared
+    @State private var isFullScreen = false
 
     var body: some View {
         ZStack {
             Color.miltonBackground.ignoresSafeArea()
 
-            if isLoading {
-                LoadingView()
-            } else if let msg = loadError {
-                ErrorView(message: msg) {
-                    Task { await loadPDF() }
+            if issueService.isLoading && issueService.document == nil {
+                IssueReaderSkeleton()
+            } else if let message = issueService.errorMessage,
+                      issueService.document == nil {
+                ErrorView(message: message) {
+                    Task { await issueService.load(forceRefresh: true) }
                 }
-            } else if let doc = pdfDocument {
-                PDFKitView(document: doc)
+            } else if let document = issueService.document {
+                PDFKitView(document: document)
                     .ignoresSafeArea(edges: .bottom)
+                    .overlay(alignment: .topTrailing) {
+                        IssueReaderButton(
+                            icon: "arrow.up.left.and.arrow.down.right",
+                            label: "Open issue full screen"
+                        ) {
+                            isFullScreen = true
+                        }
+                        .padding(12)
+                    }
             }
         }
-        .task { await loadPDF() }
-    }
-
-    private func loadPDF() async {
-        if let cached = Self.pdfCache.object(forKey: Self.pdfCacheKey) {
-            pdfDocument = cached
-            isLoading = false
-            return
-        }
-        isLoading = true
-        loadError = nil
-        pdfDocument = nil
-        do {
-            let fileID = try await fetchGoogleDriveFileID()
-            let data   = try await downloadDrivePDF(fileID: fileID)
-            if let doc = PDFDocument(data: data) {
-                Self.pdfCache.setObject(doc, forKey: Self.pdfCacheKey)
-                pdfDocument = doc
-            } else {
-                loadError = "Could not open PDF"
-            }
-        } catch {
-            loadError = error.localizedDescription
-        }
-        isLoading = false
-    }
-
-    // Step 1: fetch the Squarespace JSON API to extract the embedded Drive file ID
-    private func fetchGoogleDriveFileID() async throws -> String {
-        let url = URL(string: "https://themiltonpaper.com/latest-issue?format=json")!
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let text = String(data: data, encoding: .utf8) ?? ""
-
-        // Match: drive.google.com/file/d/<ID>/ or drive.google.com/open?id=<ID>
-        let patterns = [
-            #"drive\.google\.com/file/d/([A-Za-z0-9_\-]+)"#,
-            #"drive\.google\.com/open\?id=([A-Za-z0-9_\-]+)"#,
-        ]
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern),
-               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-               match.numberOfRanges > 1,
-               let idRange = Range(match.range(at: 1), in: text) {
-                return String(text[idRange])
+        .task { await issueService.load() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Task { await issueService.load(forceRefresh: true) } } label: {
+                    Image(systemName: "arrow.clockwise").frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Refresh issue")
+                .disabled(issueService.isLoading)
             }
         }
-        throw URLError(.cannotParseResponse)
-    }
-
-    // Step 2: download the raw PDF bytes from Google Drive
-    private func downloadDrivePDF(fileID: String) async throws -> Data {
-        // confirm=t bypasses the virus-scan interstitial for larger files
-        let url = URL(string: "https://drive.google.com/uc?export=download&id=\(fileID)&confirm=t")!
-        var request = URLRequest(url: url)
-        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        let contentType = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? ""
-        if contentType.contains("text/html") {
-            // Google returned the confirm page — parse out the real download link
-            let html = String(data: data, encoding: .utf8) ?? ""
-            if let confirmURL = extractConfirmURL(from: html, fileID: fileID) {
-                let (pdfData, _) = try await URLSession.shared.data(from: confirmURL)
-                return pdfData
+        .safeAreaInset(edge: .bottom) {
+            if issueService.document != nil, issueService.errorMessage != nil {
+                InlineRetryView(message: "Couldn't refresh. Showing the saved issue.") {
+                    Task { await issueService.load(forceRefresh: true) }
+                }.padding(.horizontal, 20).background(Color.miltonBackground)
             }
-            throw URLError(.cannotParseResponse)
         }
-        return data
-    }
-
-    private func extractConfirmURL(from html: String, fileID: String) -> URL? {
-        // Drive confirm pages contain a form action or link like /uc?export=download&id=...&confirm=...
-        let pattern = #"href="(/uc\?export=download[^"]+)""#
-        if let regex = try? NSRegularExpression(pattern: pattern),
-           let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-           match.numberOfRanges > 1,
-           let pathRange = Range(match.range(at: 1), in: html) {
-            let path = String(html[pathRange])
-                .replacingOccurrences(of: "&amp;", with: "&")
-            return URL(string: "https://drive.google.com" + path)
+        .fullScreenCover(isPresented: $isFullScreen) {
+            if let document = issueService.document {
+                FullScreenIssueView(document: document)
+            }
         }
-        return nil
     }
 }
 
-// MARK: - PDF renderer
+struct IssuePromoView: View {
+    @ObservedObject private var issueService = IssueService.shared
+    @State private var isFullScreen = false
+
+    var body: some View {
+        Button {
+            if issueService.document != nil {
+                isFullScreen = true
+            } else {
+                Task {
+                    await issueService.load(forceRefresh: true)
+                    isFullScreen = issueService.document != nil
+                }
+            }
+        } label: {
+            HStack(alignment: .center, spacing: 18) {
+                Group {
+                    if let coverImage = issueService.coverImage {
+                        Image(uiImage: coverImage)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Rectangle()
+                            .fill(Color.miltonRule.opacity(0.55))
+                            .overlay {
+                                Text("TMP")
+                                    .font(.system(.title3, design: .serif, weight: .bold))
+                                    .foregroundColor(.miltonSecondary)
+                            }
+                    }
+                }
+                .frame(width: 88, height: 116)
+                .clipped()
+                .overlay { Rectangle().stroke(Color.miltonRule, lineWidth: 1) }
+
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("THIS WEEK'S ISSUE")
+                        .font(.miltonLabel)
+                        .tracking(0.7)
+                        .foregroundColor(.miltonSecondary)
+
+                    Text("Read the latest print edition")
+                        .font(.miltonTitle)
+                        .foregroundColor(.miltonText)
+                        .multilineTextAlignment(.leading)
+
+                    HStack(spacing: 6) {
+                        Text(actionLabel)
+                        Image(systemName: "arrow.up.right")
+                    }
+                    .font(.miltonCaption.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .background(Color.miltonPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous))
+                    .padding(.top, 2)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(issueService.isLoading && issueService.document == nil)
+        .task { await issueService.load() }
+        .fullScreenCover(isPresented: $isFullScreen) {
+            if let document = issueService.document {
+                FullScreenIssueView(document: document)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("This week's issue. \(actionLabel)")
+        .accessibilityIdentifier("issue.promo")
+    }
+
+    private var actionLabel: String {
+        if issueService.document != nil { return "Read full screen" }
+        if issueService.isLoading { return "Loading issue…" }
+        if issueService.errorMessage != nil { return "Couldn't load. Tap to retry." }
+        return "Read full screen"
+    }
+}
+
+private struct IssueReaderSkeleton: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            ShimmerView()
+                .frame(maxWidth: 430)
+                .aspectRatio(0.72, contentMode: .fit)
+            Text("Loading this week's issue…")
+                .font(.miltonCaption)
+                .foregroundColor(.miltonSecondary)
+        }
+        .padding(MiltonLayout.gutter)
+    }
+}
+
+private struct IssueReaderButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.miltonPrimary)
+                .frame(width: 44, height: 44)
+                .background(Color.miltonSurface)
+                .clipShape(RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous)
+                        .stroke(Color.miltonRule, lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+}
+
+struct FullScreenIssueView: View {
+    @Environment(\.dismiss) private var dismiss
+    let document: PDFDocument
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.miltonBackground.ignoresSafeArea()
+            PDFKitView(document: document).ignoresSafeArea()
+            IssueReaderButton(icon: "xmark", label: "Close full screen issue") {
+                dismiss()
+            }
+            .safeAreaPadding(.top, 8)
+            .padding(.trailing, 12)
+        }
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
+    }
+}
 
 private struct PDFKitView: UIViewRepresentable {
     let document: PDFDocument
@@ -128,6 +208,8 @@ private struct PDFKitView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: PDFView, context: Context) {
-        uiView.document = document
+        if uiView.document !== document {
+            uiView.document = document
+        }
     }
 }

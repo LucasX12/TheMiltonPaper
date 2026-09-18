@@ -1,84 +1,86 @@
 import SwiftUI
 
 struct SearchView: View {
+    @ObservedObject private var appConfiguration = AppConfiguration.shared
     @State private var searchQuery = ""
     @State private var articles: [Article] = []
     @State private var isLoading = true
+    @State private var errorMessage: String?
     @State private var selectedArticle: Article?
 
     private var filteredArticles: [Article] {
-        guard !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return articles
-        }
-        let query = searchQuery.lowercased()
-        return articles.filter { article in
-            article.title.lowercased().contains(query) ||
-            article.summary.lowercased().contains(query) ||
-            article.author.lowercased().contains(query)
+        let visible = articles.filter { appConfiguration.flags.showsFeedCategory($0.category) }
+        let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return visible }
+        let query = trimmed.lowercased()
+        return visible.filter {
+            $0.title.lowercased().contains(query) ||
+            $0.summary.lowercased().contains(query) ||
+            $0.author.lowercased().contains(query)
         }
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.miltonBackground.ignoresSafeArea()
+        Group {
+            if isLoading && articles.isEmpty {
+                EditorialFeedSkeleton()
+            } else if let errorMessage, articles.isEmpty {
+                ErrorView(message: errorMessage) { Task { await loadArticles() } }
+            } else if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                emptyMessage("Search the archive", detail: "Enter a headline, writer, or topic.")
+            } else if filteredArticles.isEmpty {
+                emptyMessage("No matching stories", detail: "Check the spelling or try a broader search.")
+            } else {
+                results
+            }
+        }
+        .background(Color.miltonBackground.ignoresSafeArea())
+        .navigationTitle("Search")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search stories")
+        .navigationDestination(item: $selectedArticle) { ArticleDetailView(article: $0) }
+        .task { await loadArticles() }
+    }
 
-                if isLoading {
-                    LoadingView()
-                } else if searchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 44))
-                            .foregroundColor(.miltonSecondary.opacity(0.4))
-                        Text("Search articles")
-                            .font(.miltonTitle)
-                            .foregroundColor(.miltonSecondary.opacity(0.4))
-                    }
-                } else if filteredArticles.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 44))
-                            .foregroundColor(.miltonSecondary.opacity(0.4))
-                        Text("No results found")
-                            .font(.miltonTitle)
-                            .foregroundColor(.miltonSecondary.opacity(0.4))
-                    }
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(filteredArticles) { article in
-                                Button {
-                                    selectedArticle = article
-                                } label: {
-                                    ArticleCardView(article: article, onBookmark: nil)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
+    private var results: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                if let errorMessage {
+                    InlineRetryView(message: errorMessage) { Task { await loadArticles() } }
+                }
+                ForEach(Array(filteredArticles.enumerated()), id: \.element.id) { index, article in
+                    ArticleCardView(article: article, onSelect: { selectedArticle = article })
+                    if index < filteredArticles.count - 1 { EditorialRule() }
                 }
             }
-            .navigationTitle("Search")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.miltonSurface, for: .navigationBar)
-            .searchable(text: $searchQuery, prompt: "Search articles")
-            .navigationDestination(item: $selectedArticle) { article in
-                ArticleDetailView(article: article)
-            }
+            .padding(.horizontal, MiltonLayout.gutter)
+            .editorialReadableColumn()
         }
-        .task {
-            do {
-                articles = try await ArticleService.shared.fetchArticles()
-            } catch {
-                articles = []
-            }
-            isLoading = false
-        }
+        .refreshable { await loadArticles() }
     }
-}
 
-#Preview {
-    SearchView()
+    private func emptyMessage(_ title: String, detail: String) -> some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.miltonTitle)
+                .foregroundColor(.miltonText)
+            Text(detail)
+                .font(.miltonCaption)
+                .foregroundColor(.miltonSecondary)
+        }
+        .multilineTextAlignment(.center)
+        .padding(MiltonLayout.gutter)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func loadArticles() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            articles = try await ArticleService.shared.fetchArticles()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
 }

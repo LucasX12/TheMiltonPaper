@@ -1,23 +1,21 @@
 import SwiftUI
 
-/// Horizontal snap carousel of Student Reflections shown at the top of the
-/// Recent tab. Temporary, like the section itself — it disappears on its own
-/// once the feed stops returning articles.
+/// A compact, print-like rail for the temporary Student Reflections package.
 struct ReflectionsCarousel: View {
     let articles: [Article]
     let onSelect: (Article) -> Void
     let onSeeAll: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Student Reflections")
-                    .font(.miltonLabel)
-                    .foregroundColor(.miltonSecondary)
+                    .font(.miltonTitle)
+                    .foregroundColor(.miltonText)
                 Spacer()
                 Button(action: onSeeAll) {
                     HStack(spacing: 3) {
-                        Text("See All")
+                        Text("View all")
                         Image(systemName: "chevron.right")
                             .font(.system(size: 9, weight: .semibold))
                     }
@@ -29,7 +27,7 @@ struct ReflectionsCarousel: View {
             .padding(.horizontal, 16)
 
             ScrollView(.horizontal) {
-                LazyHStack(spacing: 12) {
+                LazyHStack(spacing: 10) {
                     ForEach(articles) { article in
                         Button { onSelect(article) } label: {
                             ReflectionCard(article: article)
@@ -54,37 +52,38 @@ private struct ReflectionCard: View {
     let article: Article
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        VStack(alignment: .leading, spacing: 0) {
             RemoteImage(url: article.thumbnailURL, targetWidth: 270) {
                 ZStack {
-                    Color.miltonPrimary.opacity(0.15)
+                    Color.miltonBackground
                     Image(systemName: "text.quote")
-                        .font(.system(size: 40, weight: .ultraLight))
-                        .foregroundColor(.miltonPrimary.opacity(0.35))
+                        .font(.system(size: 24, weight: .regular))
+                        .foregroundColor(.miltonSecondary.opacity(0.55))
                 }
             }
+            .frame(height: 112)
+            .clipped()
 
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.75)],
-                startPoint: .center,
-                endPoint: .bottom
-            )
-
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(article.title)
-                    .font(.custom("Georgia", size: 16).weight(.semibold))
-                    .foregroundColor(.white)
+                    .font(.miltonStoryTitle)
+                    .foregroundColor(.miltonText)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 Text("By \(article.author)")
                     .font(.miltonCaption)
-                    .foregroundColor(.white.opacity(0.85))
+                    .foregroundColor(.miltonSecondary)
                     .lineLimit(1)
             }
             .padding(12)
         }
-        .frame(width: 270, height: 170)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .frame(width: 250, height: 190, alignment: .top)
+        .background(Color.miltonSurface)
+        .clipShape(RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MiltonLayout.cornerRadius, style: .continuous)
+                .stroke(Color.miltonRule, lineWidth: 1)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Reflection: \(article.title), by \(article.author)")
     }

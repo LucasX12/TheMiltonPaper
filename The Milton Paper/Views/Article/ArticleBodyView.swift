@@ -2,6 +2,7 @@ import SwiftUI
 import WebKit
 
 struct ArticleBodyView: UIViewRepresentable {
+    @ScaledMetric(relativeTo: .body) private var bodySize = 18.0
     let htmlContent: String
     var baseURL: URL?
     @Binding var contentHeight: CGFloat
@@ -32,7 +33,7 @@ struct ArticleBodyView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {
         // Reload only when the content or layout width actually changes —
         // unrelated SwiftUI state updates must not restart the page load.
-        let loadKey = "\(Int(viewWidth.rounded()))|\(htmlContent.hashValue)"
+        let loadKey = "\(Int(viewWidth.rounded()))|\(bodySize)|\(htmlContent.hashValue)"
         guard context.coordinator.lastLoadKey != loadKey else { return }
         context.coordinator.lastLoadKey = loadKey
         uiView.loadHTMLString(styledHTML(width: Int(viewWidth.rounded())), baseURL: baseURL)
@@ -50,40 +51,40 @@ struct ArticleBodyView: UIViewRepresentable {
         <head>
             <meta name="viewport" content="width=\(width), initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <style>
-                :root { color-scheme: light dark; }
+                :root { color-scheme: light; }
                 html, body { overflow-x: hidden; width: 100%; }
                 * { box-sizing: border-box; margin: 0; padding: 0; max-width: 100%; }
                 body {
                     font-family: Georgia, serif;
-                    font-size: 17px;
-                    line-height: 1.7;
+                    font-size: \(bodySize)px;
+                    line-height: 1.65;
                     color: #1C1C1E;
-                    padding: 0 24px 40px;
+                    padding: 0 20px 40px;
                     background: transparent;
                     word-wrap: break-word;
                     overflow-wrap: break-word;
-                    text-align: justify;
+                    text-align: left;
                 }
                 body > :first-child { margin-top: 0 !important; padding-top: 0 !important; }
                 h1, h2, h3 {
                     font-family: Georgia, serif;
-                    color: #1A2744;
+                    color: #111111;
                     margin: 24px 0 12px;
                     text-align: left;
                     word-break: break-word;
                     overflow-wrap: break-word;
                     max-width: 100%;
                 }
-                h2 { font-size: 20px; }
-                h3 { font-size: 17px; }
+                h2 { font-size: 1.25em; }
+                h3 { font-size: 1.1em; }
                 p { margin: 0 0 16px; }
-                a { color: #1A2744; text-decoration: underline; }
-                img, video, iframe { max-width: 100% !important; width: auto !important; height: auto !important; border-radius: 8px; margin: 16px 0; display: block; }
+                a { color: #17365D; text-decoration: underline; }
+                img, video, iframe { max-width: 100% !important; width: auto !important; height: auto !important; border-radius: 4px; margin: 16px 0; display: block; }
                 figure { margin: 16px 0; }
                 figure img { margin: 0; }
                 figcaption { font-size: 13px; color: #6E6E73; margin-top: 6px; font-style: italic; text-align: left; }
                 blockquote {
-                    border-left: 3px solid #C9A84C;
+                    border-left: 3px solid #17365D;
                     padding: 8px 16px;
                     margin: 16px 0;
                     color: #6E6E73;
@@ -93,12 +94,6 @@ struct ArticleBodyView: UIViewRepresentable {
                 ul, ol { margin: 0 0 16px 24px; text-align: left; }
                 li { margin-bottom: 6px; }
                 table { width: 100% !important; table-layout: fixed; word-break: break-word; }
-                @media (prefers-color-scheme: dark) {
-                    body { color: #F2F2F7; }
-                    h1, h2, h3 { color: #DCE4F5; }
-                    a { color: #4B81CC; }
-                    blockquote, figcaption { color: #8E8E93; }
-                }
             </style>
         </head>
         <body>\(htmlContent)

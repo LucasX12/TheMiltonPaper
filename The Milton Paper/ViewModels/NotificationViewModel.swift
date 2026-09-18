@@ -13,6 +13,7 @@ final class NotificationViewModel: ObservableObject {
         ("News",           Config.topicNews),
         ("Opinion",        Config.topicOpinion),
         ("Sports",         Config.topicSports),
+        ("A&E",            Config.topicArtsEntertainment),
         ("Editorial",      Config.topicEditorial),
     ]
 

@@ -70,7 +70,7 @@ actor ImageLoader {
 extension URL {
     /// Squarespace's image CDN serves resized renditions via the `format`
     /// query parameter (e.g. `?format=750w`); other hosts are left untouched.
-    func squarespaceSized(forPixelWidth width: CGFloat) -> URL {
+    nonisolated func squarespaceSized(forPixelWidth width: CGFloat) -> URL {
         guard let host = host?.lowercased(),
               host.contains("squarespace") || host.contains("sqspcdn") else {
             return self

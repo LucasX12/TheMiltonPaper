@@ -10,6 +10,7 @@ enum Config {
         RSSFeed(url: "https://www.themiltonpaper.com/news?format=rss",      category: "News"),
         RSSFeed(url: "https://www.themiltonpaper.com/opinion?format=rss",   category: "Opinion"),
         RSSFeed(url: "https://www.themiltonpaper.com/sports?format=rss",    category: "Sports"),
+        RSSFeed(url: "https://www.themiltonpaper.com/aande?format=rss",     category: categoryArtsEntertainment),
         RSSFeed(url: "https://www.themiltonpaper.com/editorial?format=rss", category: "Editorial"),
         // Temporary TMP 43 send-off sections. When the site retires them,
         // delete these two feeds (and the category constants below) — the
@@ -21,6 +22,7 @@ enum Config {
 
     static let categoryStudentReflections = "Student Reflections"
     static let categoryFacultyFarewells   = "Faculty Farewells"
+    static let categoryArtsEntertainment  = "A&E"
 
     static let squarespaceAPIKey = ""
     static let squarespaceCollectionID = ""
@@ -34,7 +36,18 @@ enum Config {
     static let topicNews = "news"
     static let topicOpinion = "opinion"
     static let topicSports = "sports"
+    static let topicArtsEntertainment = "aande"
     static let topicEditorial = "editorial"
 
-    static var useMockData: Bool { rssFeeds.isEmpty }
+    static var useMockData: Bool {
+        rssFeeds.isEmpty || isUITesting
+    }
+
+    static var isUITesting: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-useMockData")
+#else
+        false
+#endif
+    }
 }

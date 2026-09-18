@@ -71,8 +71,10 @@ final class WordleViewModel: ObservableObject {
         self.grid = (0..<Self.maxGuesses).map { _ in
             (0..<Self.wordLength).map { _ in LetterCell() }
         }
-        cleanupStaleStates()
-        restoreState()
+        if !Config.isUITesting {
+            cleanupStaleStates()
+            restoreState()
+        }
 
         lifecycleObservers.append(NotificationCenter.default.addObserver(
             forName: UIApplication.willResignActiveNotification,
@@ -245,6 +247,7 @@ final class WordleViewModel: ObservableObject {
     }
 
     private func saveState() {
+        guard !Config.isUITesting else { return }
         let letters   = grid.map { $0.map { $0.letter } }
         let states    = grid.map { $0.map { stateString($0.state) } }
         let keyStates = letterStates.mapValues { stateString($0) }

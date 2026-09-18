@@ -32,6 +32,9 @@ final class BookmarkViewModel: ObservableObject {
         do {
             try await firestoreService.removeBookmark(uid: uid, articleID: article.id)
             bookmarkedArticles.removeAll { $0.id == article.id }
+            articleService.updateBookmark(id: article.id, isBookmarked: false)
+            NotificationCenter.default.post(name: .miltonBookmarkChanged, object: nil,
+                userInfo: ["articleID": article.id, "isBookmarked": false])
         } catch {
             errorMessage = error.localizedDescription
         }
