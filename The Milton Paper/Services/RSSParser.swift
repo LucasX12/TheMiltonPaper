@@ -108,7 +108,7 @@ final class RSSParser: NSObject, XMLParserDelegate {
         let bodyHTML = stripBylineFromBodyHTML(rawBodyHTML)
         // Strip byline from summary text so it doesn't appear in article cards
         let rawSummary = stripHTML(item["description"] ?? String(bodyHTML.prefix(500)))
-        let summary = stripBylineFromText(rawSummary)
+        let summary = excerpt(from: stripBylineFromText(rawSummary))
         let thumbnailURL = item["thumbnailURL"].flatMap { URL(string: $0) }
             ?? extractFirstImage(from: bodyHTML)
         let publishedDate = item["pubDate"].flatMap { parsePubDate($0) } ?? Date()
@@ -180,6 +180,24 @@ final class RSSParser: NSObject, XMLParserDelegate {
     }
 
     // Removes leading "By …" lines from plain summary text
+    /// Squarespace puts the whole article in `<description>`, so what the feed
+    /// calls a summary has to be cut down to a real excerpt — otherwise every
+    /// card and the reader's standfirst carry the entire story.
+    func excerpt(from text: String, limit: Int = 240) -> String {
+        let collapsed = text
+            .split(whereSeparator: { $0.isNewline })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        guard collapsed.count > limit else { return collapsed }
+
+        let clipped = collapsed.prefix(limit)
+        let head = clipped.lastIndex(of: " ").map { String(clipped[clipped.startIndex..<$0]) }
+            ?? String(clipped)
+        let tidied = head.trimmingCharacters(in: CharacterSet(charactersIn: " \t,;:.—–-"))
+        return tidied.isEmpty ? "" : tidied + "…"
+    }
+
     private func stripBylineFromText(_ text: String) -> String {
         var lines = text.components(separatedBy: .newlines)
         while let first = lines.first,

@@ -34,15 +34,17 @@ struct ArticleHeaderView: View {
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if !article.summary.isEmpty {
-                    Text(article.summary)
+                if let standfirst = article.standfirst {
+                    Text(standfirst)
                         .font(.system(.title3, design: .serif))
                         .foregroundColor(.miltonSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                bylineView(for: article.author)
+                if article.hasNamedAuthor {
+                    bylineView(for: article.author)
+                }
             }
             .padding(.horizontal, MiltonLayout.gutter)
             .padding(.top, 22)

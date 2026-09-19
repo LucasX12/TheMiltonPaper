@@ -27,7 +27,9 @@ struct ProfileView: View {
                             Text("Sign in to save stories across your devices. Your reading history stays on this device.")
                                 .font(.miltonBody).foregroundStyle(Color.miltonSecondary)
                             Button("Sign In") { showLoginPrompt = true }
-                                .font(.headline).frame(minHeight: 44)
+                                .font(.headline)
+                                .foregroundColor(.miltonPrimary)
+                                .frame(minHeight: 44)
                         }.padding(.vertical, 10)
                     }
                 }

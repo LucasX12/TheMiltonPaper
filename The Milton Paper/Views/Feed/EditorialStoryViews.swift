@@ -118,13 +118,15 @@ struct StoryMetadataView: View {
             ViewThatFits(in: .horizontal) {
                 if !dynamicTypeSize.isAccessibilitySize {
                     HStack(spacing: 5) {
-                        Text("By \(article.author)")
-                        Text("·")
+                        if article.hasNamedAuthor {
+                            Text("By \(article.author)")
+                            Text("·")
+                        }
                         dateAndReadTime
                     }.fixedSize()
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("By \(article.author)")
+                    if article.hasNamedAuthor { Text("By \(article.author)") }
                     dateAndReadTime
                 }
             }
@@ -139,6 +141,9 @@ struct StoryMetadataView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                // Keep the 44pt target but stop it setting the row's height,
+                // which otherwise adds ~28pt of dead space under every byline.
+                .padding(.vertical, -12)
                 .accessibilityLabel(article.isBookmarked ? "Remove bookmark" : "Save story")
             }
         }

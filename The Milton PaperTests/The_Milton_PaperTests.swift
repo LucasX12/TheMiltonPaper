@@ -280,3 +280,53 @@ struct HomeModuleTests {
         HomeModule(id: id, kind: .rail, title: "Rail \(id)", order: 10, items: items)
     }
 }
+
+
+struct ArticlePresentationTests {
+    /// This feed ships no <content:encoded>, so <description> is the whole
+    /// article. Without a cap the reader printed the story twice.
+    @Test func excerptTruncatesAtAWordBoundary() {
+        let parser = RSSParser()
+        let long = String(repeating: "word ", count: 200)
+        let excerpt = parser.excerpt(from: long)
+        #expect(excerpt.count <= 241)
+        #expect(excerpt.hasSuffix("…"))
+        #expect(!excerpt.contains("  "))
+    }
+
+    @Test func excerptLeavesShortTextAloneAndCollapsesLines() {
+        let parser = RSSParser()
+        #expect(parser.excerpt(from: "A short summary.") == "A short summary.")
+        #expect(parser.excerpt(from: "One line.\nTwo line.\n\n  Three.  ") == "One line. Two line. Three.")
+        #expect(parser.excerpt(from: "") == "")
+    }
+
+    @Test func standfirstIsHiddenWhenItOnlyRepeatsTheBody() {
+        let opening = "Recently the Artemis II, a planned mission by NASA, marked the first human return to lunar orbit."
+        let duplicate = article(summary: opening + "…",
+                                bodyHTML: "<p>" + opening + " And then more text follows.</p>")
+        #expect(duplicate.standfirst == nil)
+
+        let distinct = article(summary: "A genuinely different standfirst written by an editor.",
+                               bodyHTML: "<p>" + opening + "</p>")
+        #expect(distinct.standfirst != nil)
+
+        #expect(article(summary: "", bodyHTML: "<p>Body.</p>").standfirst == nil)
+    }
+
+    @Test func houseBylineIsNotTreatedAsANamedAuthor() {
+        #expect(!article(author: Article.houseByline).hasNamedAuthor)
+        #expect(!article(author: "   ").hasNamedAuthor)
+        #expect(article(author: "Joanna Zhang").hasNamedAuthor)
+    }
+
+    private func article(author: String = "Joanna Zhang", summary: String = "A summary.",
+                         bodyHTML: String = "<p>Body.</p>") -> Article {
+        Article(
+            id: "a", title: "Title", author: author,
+            publishedDate: Date(timeIntervalSince1970: 2_000_000_000),
+            category: "News", summary: summary, bodyHTML: bodyHTML,
+            articleURL: URL(string: "https://example.com/a")!, thumbnailURL: nil
+        )
+    }
+}
