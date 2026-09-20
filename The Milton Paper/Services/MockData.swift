@@ -137,4 +137,35 @@ enum MockData {
             ]
         ),
     ]
+
+    /// Writer fixtures for UI tests. photoURL is nil throughout so no test
+    /// launch reaches the network and avatars stay deterministic.
+    static let writers: [Writer] = [
+        Writer(id: "emily-chen", name: "Emily Chen",
+               bio: "Emily covers science and campus research for The Milton Paper.",
+               role: "News Editor", classYear: "\u{2019}27"),
+        Writer(id: "marcus-williams", name: "Marcus Williams",
+               bio: "Marcus writes on academics and student life.",
+               role: "Opinion Editor", classYear: "\u{2019}26"),
+    ]
+
+    /// A fixed puzzle for UI tests. The start date is an absolute instant, not
+    /// one relative to today, so screenshots stay identical between runs.
+    static let connectionsPuzzles: [ConnectionsPuzzle] = [
+        ConnectionsPuzzle(
+            id: "2023-11-14",
+            title: "Puzzle No. 1",
+            startsAt: Date(timeIntervalSince1970: 1_700_000_000),
+            groups: [
+                ConnectionsGroup(id: "group1", name: "BOSTON TEAMS",
+                                 words: ["CELTICS", "BRUINS", "SOX", "PATRIOTS"], level: 1),
+                ConnectionsGroup(id: "group2", name: "SCHOOL SUBJECTS",
+                                 words: ["LATIN", "PHYSICS", "HISTORY", "ART"], level: 2),
+                ConnectionsGroup(id: "group3", name: "THINGS IN A LIBRARY",
+                                 words: ["ATLAS", "CARREL", "STACKS", "INDEX"], level: 3),
+                ConnectionsGroup(id: "group4", name: "___ HOUSE",
+                                 words: ["BOAT", "GREEN", "FULL", "OPEN"], level: 4),
+            ]
+        ),
+    ]
 }

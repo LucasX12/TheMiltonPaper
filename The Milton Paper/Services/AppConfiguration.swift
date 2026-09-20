@@ -2,6 +2,24 @@ import Combine
 @preconcurrency import FirebaseRemoteConfig
 import Foundation
 
+/// Editorial copy that has to be changeable without an App Store release.
+/// These are Remote Config strings rather than Firestore documents: it is a
+/// paragraph and a link, the live listener already pushes edits to open apps,
+/// and no new collection or security rule is needed.
+struct AppNotices: Equatable {
+    var aiNotice = AppNotices.defaultAINotice
+    var aiPolicyLabel = "Read our AI usage policy"
+    var aiPolicyURLString = ""
+
+    /// Shipped in the app so an offline first launch still says something true.
+    static let defaultAINotice = """
+        This app was built with the help of AI. Every article, photograph and \
+        headline in it is reported, written and edited by Milton students.
+        """
+
+    var aiPolicyURL: URL? { HomeModuleField.webURL(aiPolicyURLString) }
+}
+
 struct FeatureFlags: Equatable {
     var showThisWeek = true
     var showTMPlay = true
@@ -13,6 +31,7 @@ struct FeatureFlags: Equatable {
     var showArtsEntertainment = true
     var showEditorial = true
     var showHomeModules = true
+    var showConnections = true
 
     func showsFeedCategory(_ category: String) -> Bool {
         let normalized = category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -41,6 +60,7 @@ final class AppConfiguration: ObservableObject {
     static let shared = AppConfiguration()
 
     @Published private(set) var flags = FeatureFlags()
+    @Published private(set) var notices = AppNotices()
 
     private enum Key {
         static let showThisWeek = "show_this_week"
@@ -53,6 +73,10 @@ final class AppConfiguration: ObservableObject {
         static let showArtsEntertainment = "show_aande"
         static let showEditorial = "show_editorial"
         static let showHomeModules = "show_home_modules"
+        static let showConnections = "show_connections"
+        static let aiNotice = "about_ai_notice"
+        static let aiPolicyLabel = "about_ai_policy_label"
+        static let aiPolicyURL = "about_ai_policy_url"
     }
 
     private var remoteConfig: RemoteConfig?
@@ -70,6 +94,7 @@ final class AppConfiguration: ObservableObject {
             testFlags.showTMPlay = !ProcessInfo.processInfo.arguments.contains("-hideTMPlay")
             testFlags.showSports = !ProcessInfo.processInfo.arguments.contains("-hideSports")
             testFlags.showHomeModules = !ProcessInfo.processInfo.arguments.contains("-hideHomeModules")
+            testFlags.showConnections = !ProcessInfo.processInfo.arguments.contains("-hideConnections")
             flags = testFlags
             return
         }
@@ -96,6 +121,10 @@ final class AppConfiguration: ObservableObject {
             Key.showArtsEntertainment: true as NSNumber,
             Key.showEditorial: true as NSNumber,
             Key.showHomeModules: true as NSNumber,
+            Key.showConnections: true as NSNumber,
+            Key.aiNotice: AppNotices.defaultAINotice as NSString,
+            Key.aiPolicyLabel: "Read our AI usage policy" as NSString,
+            Key.aiPolicyURL: "" as NSString,
         ])
         remoteConfig = config
         applyActivatedValues(from: config)
@@ -143,7 +172,23 @@ final class AppConfiguration: ObservableObject {
             showSports: remoteConfig[Key.showSports].boolValue,
             showArtsEntertainment: remoteConfig[Key.showArtsEntertainment].boolValue,
             showEditorial: remoteConfig[Key.showEditorial].boolValue,
-            showHomeModules: remoteConfig[Key.showHomeModules].boolValue
+            showHomeModules: remoteConfig[Key.showHomeModules].boolValue,
+            showConnections: remoteConfig[Key.showConnections].boolValue
         )
+
+        // An empty string means "not configured", so fall back rather than
+        // rendering a blank notice.
+        let fallback = AppNotices()
+        notices = AppNotices(
+            aiNotice: text(remoteConfig[Key.aiNotice].stringValue) ?? fallback.aiNotice,
+            aiPolicyLabel: text(remoteConfig[Key.aiPolicyLabel].stringValue) ?? fallback.aiPolicyLabel,
+            aiPolicyURLString: text(remoteConfig[Key.aiPolicyURL].stringValue) ?? ""
+        )
+    }
+
+    private func text(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+        return trimmed
     }
 }

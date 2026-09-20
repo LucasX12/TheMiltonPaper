@@ -125,6 +125,15 @@ struct AboutView: View {
                         .padding(.top, 36)
                         .padding(.bottom, 8)
 
+                    if selectedTab == 0 {
+                        Divider()
+                            .padding(.horizontal, 40)
+                            .padding(.vertical, 28)
+
+                        AINoticeView(alignment: .center)
+                            .padding(.horizontal, 28)
+                    }
+
                     Divider()
                         .padding(.horizontal, 40)
                         .padding(.vertical, 28)

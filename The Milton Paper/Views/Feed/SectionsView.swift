@@ -7,6 +7,7 @@ struct SectionsView: View {
 
     @State private var selectedSection: SectionDescriptor?
     @State private var showSearch = false
+    @State private var showAbout = false
     @State private var showLoginPrompt = false
 
     private var sections: [SectionDescriptor] {
@@ -37,6 +38,7 @@ struct SectionsView: View {
             }
             .navigationDestination(item: $selectedSection) { destination(for: $0) }
             .navigationDestination(isPresented: $showSearch) { SearchView() }
+            .navigationDestination(isPresented: $showAbout) { AboutView() }
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
             .task(id: authViewModel.currentUser?.uid) { await viewModel.loadArticles() }
             .onChange(of: appConfiguration.flags) { _, flags in
@@ -76,11 +78,40 @@ struct SectionsView: View {
                     .accessibilityIdentifier("section.\(section.id)")
                     if index < sections.count - 1 { EditorialRule() }
                 }
+
+                sectionsFooter
             }
             .padding(.horizontal, MiltonLayout.gutter)
             .editorialReadableColumn()
         }
         .refreshable { await viewModel.refresh() }
+    }
+
+    /// The paper's colophon: who built the app, and the way in to About.
+    /// The masthead wordmark opens the same screen on its Masthead tab.
+    private var sectionsFooter: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            EditorialRule().padding(.top, 8)
+
+            Button { showAbout = true } label: {
+                HStack(spacing: 12) {
+                    Text("About The Milton Paper")
+                        .font(.system(.title3, design: .serif, weight: .bold))
+                        .foregroundColor(.miltonText)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.miltonSecondary)
+                }
+                .frame(minHeight: 60)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("section.about")
+
+            AINoticeView()
+                .padding(.bottom, 32)
+        }
     }
 
     private var sectionSkeleton: some View {

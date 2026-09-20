@@ -62,14 +62,17 @@ struct ArticleHeaderView: View {
 
     @ViewBuilder
     private func bylineView(for authorString: String) -> some View {
-        let authors = authorString.components(separatedBy: " and ")
-        VStack(alignment: .leading, spacing: 0) {
+        let authors = Writer.names(inByline: authorString)
+        VStack(alignment: .leading, spacing: 2) {
             ForEach(authors.indices, id: \.self) { index in
                 NavigationLink {
                     AuthorProfileView(author: authors[index])
                 } label: {
-                    Text("\(index == 0 ? "By " : "and ")\(authors[index])")
-                        .frame(minHeight: 44, alignment: .leading)
+                    HStack(spacing: 8) {
+                        AuthorAvatarView(name: authors[index], size: 28)
+                        Text("\(index == 0 ? "By " : "and ")\(authors[index])")
+                    }
+                    .frame(minHeight: 44, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             }

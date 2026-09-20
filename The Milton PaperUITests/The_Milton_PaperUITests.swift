@@ -78,7 +78,11 @@ final class The_Milton_PaperUITests: XCTestCase {
 
     func testTMPlayStartsAndAcceptsInput() {
         let app = launch()
+        // TMPlay now opens behind a Wordle | Connections picker. Wordle is the
+        // default and the inactive game is hidden from the accessibility tree,
+        // so "Start", "How to play" and "Q" each still match one element.
         switchTo("TMPlay", in: app, expecting: app.buttons["Start"])
+        XCTAssertTrue(app.segmentedControls["tmplay.game-picker"].exists)
         capture(app, name: "TMPlay")
         app.buttons["Start"].tap()
         XCTAssertTrue(app.buttons["How to play"].waitForExistence(timeout: 15))
@@ -136,6 +140,43 @@ final class The_Milton_PaperUITests: XCTestCase {
         let hidden = launch(["-hideHomeModules"])
         XCTAssertTrue(hidden.buttons["story.article-1"].waitForExistence(timeout: 15))
         XCTAssertFalse(hidden.buttons["home.module.senior-of-the-week"].exists)
+    }
+
+    func testConnectionsIsPlayableFromTheGamePicker() {
+        let app = launch()
+        switchTo("TMPlay", in: app, expecting: app.buttons["Start"])
+        app.segmentedControls["tmplay.game-picker"].buttons["Connections"].tap()
+
+        let tile = app.buttons["connections.tile.CELTICS"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["Start"].exists)   // Wordle layer is out of the tree
+
+        for word in ["CELTICS", "BRUINS", "SOX", "PATRIOTS"] {
+            app.buttons["connections.tile.\(word)"].tap()
+        }
+        app.buttons["Submit"].tap()
+        // The solved band combines its children into one accessibility
+        // element, whose type is not guaranteed, so match on the identifier.
+        let solved = app.descendants(matching: .any)["connections.solved.group1"]
+        XCTAssertTrue(solved.waitForExistence(timeout: 15))
+        capture(app, name: "Connections")
+    }
+
+    func testHiddenConnectionsLeavesWordleAlone() {
+        let app = launch(["-hideConnections"])
+        switchTo("TMPlay", in: app, expecting: app.buttons["Start"])
+        XCTAssertFalse(app.segmentedControls["tmplay.game-picker"].exists)
+    }
+
+    func testSectionsFooterOpensAbout() {
+        let app = launch()
+        let aboutRow = app.buttons["section.about"]
+        switchTo("Sections", in: app, expecting: app.buttons["section.category-news"])
+        XCTAssertTrue(aboutRow.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["ai.notice"].exists)
+        aboutRow.tap()
+        XCTAssertTrue(app.buttons["About"].waitForExistence(timeout: 15))
+        capture(app, name: "About")
     }
 
     private func capture(_ app: XCUIApplication, name: String) {

@@ -16,7 +16,7 @@ struct ContentView: View {
                 .tag(AppTab.sections)
 
             if appConfiguration.flags.showTMPlay {
-                WordlePageView()
+                TMPlayView()
                     .id(authViewModel.currentUser?.uid ?? "guest")
                     .tabItem { Label("TMPlay", systemImage: "square.grid.3x3.fill") }
                     .tag(AppTab.tmplay)

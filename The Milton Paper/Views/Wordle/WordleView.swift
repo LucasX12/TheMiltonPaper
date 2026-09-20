@@ -3,7 +3,9 @@ import SwiftUI
 // MARK: - Main Page (embedded in ArticleFeedView's NavigationStack)
 
 struct WordlePageView: View {
-    @StateObject private var viewModel = WordleViewModel()
+    /// Owned by `TMPlayView` so a game in progress survives switching to
+    /// Connections and back.
+    @ObservedObject var viewModel: WordleViewModel
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var showHelp = false
     @State private var showLeaderboard = false
@@ -30,7 +32,7 @@ struct WordlePageView: View {
                     Spacer()
 
                     VStack(spacing: 2) {
-                    Text("TMPlay")
+                    Text("Wordle")
                             .font(.system(.title2, design: .serif, weight: .bold))
                             .foregroundColor(.miltonText)
                         if viewModel.phase == .playing {
@@ -148,7 +150,7 @@ struct WordleCoverOverlay: View {
 
             VStack(spacing: 36) {
                 VStack(spacing: 10) {
-                        Text("TMPlay")
+                        Text("Wordle")
                         .font(.system(.largeTitle, design: .serif, weight: .bold))
                         .foregroundColor(.miltonText)
 

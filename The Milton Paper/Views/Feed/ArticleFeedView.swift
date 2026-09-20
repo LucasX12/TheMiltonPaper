@@ -63,6 +63,7 @@ struct ArticleFeedView: View {
             .sheet(isPresented: $showLoginPrompt) { LoginView() }
             .task(id: authViewModel.currentUser?.uid) { await viewModel.loadArticles() }
             .task { await homeModuleService.load() }
+            .task { await WriterDirectoryService.shared.load() }
             .onChange(of: appConfiguration.flags) { _, flags in
                 if let selectedSection, !selectedSection.isVisible(flags: flags) {
                     self.selectedSection = nil

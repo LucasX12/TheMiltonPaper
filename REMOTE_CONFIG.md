@@ -16,6 +16,15 @@ launch never removes content unexpectedly.
 | `show_aande` | A&E section and stories |
 | `show_editorial` | Editorial section and stories |
 | `show_home_modules` | Remotely-configured Today modules (see [HOME_MODULES.md](HOME_MODULES.md)) |
+| `show_connections` | The Connections game in TMPlay (see [CONNECTIONS.md](CONNECTIONS.md)) |
+
+These three are text rather than switches, and set the note in the About screen:
+
+| Parameter | Type | Controls |
+| --- | --- | --- |
+| `about_ai_notice` | string | The paragraph about how the app was built |
+| `about_ai_policy_label` | string | The wording of the policy link |
+| `about_ai_policy_url` | string | Where the link goes. Leave empty to hide it |
 
 ## One-time Firebase setup
 

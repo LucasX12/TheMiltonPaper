@@ -2,6 +2,10 @@ import SwiftUI
 
 struct AuthorProfileView: View {
     let author: String
+
+    @ObservedObject private var directory = WriterDirectoryService.shared
+
+    private var writer: Writer? { directory.writer(named: author) }
     @State private var articles: [Article] = []
     @State private var isLoading = true
 
@@ -24,22 +28,29 @@ struct AuthorProfileView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         // Author header
-                        HStack(spacing: 16) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.miltonPrimary)
-                                    .frame(width: 56, height: 56)
-                                Text(author.prefix(1).uppercased())
-                                    .font(.custom("Georgia", size: 22).weight(.semibold))
-                                    .foregroundColor(.white)
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(spacing: 16) {
+                                AuthorAvatarView(name: author, size: 56)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(author)
+                                        .font(.miltonTitle)
+                                        .foregroundColor(.miltonText)
+                                    if let credit = writer?.credit {
+                                        Text(credit)
+                                            .font(.miltonMeta)
+                                            .foregroundColor(.miltonSecondary)
+                                    }
+                                    Text("\(articles.count) article\(articles.count == 1 ? "" : "s")")
+                                        .font(.miltonMeta)
+                                        .foregroundColor(.miltonSecondary)
+                                }
                             }
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(author)
-                                    .font(.miltonTitle)
-                                    .foregroundColor(.miltonText)
-                                Text("\(articles.count) article\(articles.count == 1 ? "" : "s")")
-                                    .font(.miltonMeta)
+
+                            if let bio = writer?.bio {
+                                Text(bio)
+                                    .font(.miltonBody)
                                     .foregroundColor(.miltonSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                         .padding(24)
