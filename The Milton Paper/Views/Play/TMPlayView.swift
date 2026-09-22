@@ -41,15 +41,18 @@ struct TMPlayView: View {
                 Divider()
             }
 
-            // Only the selected game is in the view hierarchy, so the other
-            // one is genuinely absent for VoiceOver and for UI tests. Its
-            // progress is safe because the view models above outlive the views.
-            switch game {
-            case .wordle:
+            // A paging TabView so the games can be swiped between as well as
+            // picked. Both view models live above it, so a board in progress
+            // survives either way of switching.
+            TabView(selection: $game) {
                 WordlePageView(viewModel: wordle)
-            case .connections:
-                ConnectionsPageView(viewModel: connections)
+                    .tag(TMPlayGame.wordle)
+                if showsPicker {
+                    ConnectionsPageView(viewModel: connections)
+                        .tag(TMPlayGame.connections)
+                }
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .background(Color.miltonBackground.ignoresSafeArea())
         .onAppear {

@@ -13,10 +13,10 @@ enum TMPlayPalette {
 
     // Connections difficulty bands, easiest to hardest. Our own muted tones
     // rather than another paper's exact values.
-    static let level1 = Color(hex: "#F2D16B")
-    static let level2 = Color(hex: "#9FBF6E")
-    static let level3 = Color(hex: "#7FA8D0")
-    static let level4 = Color(hex: "#B49BD1")
+    static let level1 = Color(hex: "#F2D16B")   // yellow, easiest
+    static let level2 = Color(hex: "#9FBF6E")   // green
+    static let level3 = Color(hex: "#7FA8D0")   // blue
+    static let level4 = Color(hex: "#B49BD1")   // purple, trickiest
 
     static let tileIdle = Color(hex: "#EFEFEA")
 

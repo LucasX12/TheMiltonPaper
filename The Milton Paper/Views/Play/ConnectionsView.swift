@@ -38,6 +38,9 @@ struct ConnectionsPageView: View {
         }
         .task {
             await service.load()
+#if DEBUG
+            service.debugDescribeSelection()
+#endif
             viewModel.adopt(service.livePuzzle)
             viewModel.cleanupStaleStates(keeping: service.knownPuzzleIDs)
         }
@@ -354,10 +357,10 @@ struct ConnectionsHelpOverlay: View {
                     .accessibilityLabel("Close")
                 }
 
-                Text("Find four groups of four words that share something.")
+                Text("Find four groups of four words that are connected")
                     .font(.miltonBody)
                     .foregroundColor(.miltonText)
-                Text("Select four tiles and tap Submit. You get four mistakes. Solving a group tells you how hard it was, from straw (easiest) to lilac (trickiest). Three of four right shows “One away”.")
+                Text("Select four tiles and tap Submit. You get four mistakes. Three of four right shows “One away”.")
                     .font(.miltonMeta)
                     .foregroundColor(.miltonSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -370,9 +373,11 @@ struct ConnectionsHelpOverlay: View {
                     }
                 }
 
-                Text("Connections is inspired by Connections by The New York Times.")
-                    .font(.miltonLabel)
-                    .foregroundColor(.miltonSecondary)
+                // Matches Wordle's attribution styling, and small caps would
+                // otherwise shout the line in capitals.
+                Text("Connections is inspired by The New York Times’ “Connections”.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.miltonSecondary.opacity(0.7))
                     .padding(.top, 4)
             }
             .padding(20)

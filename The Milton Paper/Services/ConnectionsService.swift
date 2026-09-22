@@ -69,7 +69,11 @@ final class ConnectionsService: ObservableObject {
                 }
             } catch {
                 // A cached puzzle stays playable; the view only shows an error
-                // when it has nothing at all.
+                // when it has nothing at all. Log it so a silent failure is
+                // still diagnosable from the console.
+#if DEBUG
+                print("[Connections] Fetch failed: \(error)")
+#endif
                 errorMessage = error.localizedDescription
             }
         }
@@ -77,16 +81,23 @@ final class ConnectionsService: ObservableObject {
         await task.value
     }
 
-    /// Ordered, unlike the home-modules query, because documents are named for
-    /// their dates: an unordered `limit` returns them in ascending name order,
-    /// so from the ninth week onwards it would silently keep the *oldest*
-    /// puzzles and drop the current one. Descending document id needs no
-    /// composite index, and ordering by `startsAt` would be worse still since
-    /// Firestore omits documents missing the ordered field, defeating the
-    /// document-id date fallback. Semantic selection stays client-side.
+    /// Ordered newest-first so the limit keeps the *current* puzzles: an
+    /// unordered `limit` returns documents in ascending name order, which from
+    /// the ninth week onwards would silently drop the live puzzle and keep the
+    /// oldest ones.
+    ///
+    /// The sort key is `startsAt` rather than the document id. Ordering by
+    /// `__name__` descending needs a composite index that has to be created by
+    /// hand — miss it and every fetch throws, which is exactly how this was
+    /// first shipped. A single field like `startsAt` is covered by Firestore's
+    /// automatic indexes, so there is nothing to forget. The trade is that a
+    /// document with no `startsAt` is never returned, so that field is
+    /// genuinely required rather than merely recommended.
+    ///
+    /// Semantic selection still happens client-side, in tested pure code.
     private func fetchPuzzles() async throws -> [ConnectionsPuzzle] {
         let snapshot = try await db.collection("connectionsPuzzles")
-            .order(by: FieldPath.documentID(), descending: true)
+            .order(by: "startsAt", descending: true)
             .limit(to: puzzleLimit)
             .getDocuments()
 
@@ -100,4 +111,14 @@ final class ConnectionsService: ObservableObject {
             return puzzle
         }
     }
+
+#if DEBUG
+    /// Prints why the tab is empty, which is otherwise invisible.
+    func debugDescribeSelection() {
+        print("[Connections] \(puzzles.count) puzzle(s) parsed; live = \(livePuzzle?.id ?? "none")")
+        for puzzle in puzzles {
+            print("[Connections]   \(puzzle.id) enabled=\(puzzle.isEnabled) startsAt=\(puzzle.startsAt) now=\(Date())")
+        }
+    }
+#endif
 }

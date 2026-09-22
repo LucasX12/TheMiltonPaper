@@ -13,8 +13,10 @@ struct AppNotices: Equatable {
 
     /// Shipped in the app so an offline first launch still says something true.
     static let defaultAINotice = """
-        This app was built with the help of AI. Every article, photograph and \
-        headline in it is reported, written and edited by Milton students.
+        Note: The Milton Paper utilized Claude Code and Codex as an aid in the \
+        creation of this app. However, the writing, layout design, and \
+        production of the Paper itself will never incorporate the use of \
+        generative AI.
         """
 
     var aiPolicyURL: URL? { HomeModuleField.webURL(aiPolicyURLString) }

@@ -37,7 +37,7 @@ leaves an empty screen. Readers can play each puzzle once.
    total** — no word may appear twice, even in another category.
 
    Group 1 is the easiest and group 4 the trickiest. That order is the only
-   thing that chooses the colours: straw, moss, slate, lilac.
+   thing that chooses the colours: yellow, green, blue, purple.
 6. Click **Save**.
 7. **Check it before anyone sees it.** Open the app, TMPlay → Connections.
    Nothing should have changed, because `enabled` is off.

@@ -168,15 +168,13 @@ final class The_Milton_PaperUITests: XCTestCase {
         XCTAssertFalse(app.segmentedControls["tmplay.game-picker"].exists)
     }
 
-    func testSectionsFooterOpensAbout() {
+    func testSectionsFooterShowsTheAINotice() {
         let app = launch()
-        let aboutRow = app.buttons["section.about"]
         switchTo("Sections", in: app, expecting: app.buttons["section.category-news"])
-        XCTAssertTrue(aboutRow.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["ai.notice"].exists)
-        aboutRow.tap()
-        XCTAssertTrue(app.buttons["About"].waitForExistence(timeout: 15))
-        capture(app, name: "About")
+        let notice = app.descendants(matching: .any)["ai.notice"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["section.about"].exists)
+        capture(app, name: "Sections-footer")
     }
 
     private func capture(_ app: XCUIApplication, name: String) {
