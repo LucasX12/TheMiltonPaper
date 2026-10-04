@@ -34,9 +34,13 @@ struct FeatureFlags: Equatable {
     var showEditorial = true
     var showHomeModules = true
     var showConnections = true
+    var showSeniorOfTheWeek = true
 
     func showsFeedCategory(_ category: String) -> Bool {
         let normalized = category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == Config.categorySeniorOfTheWeek.lowercased() {
+            return showSeniorOfTheWeek
+        }
         if normalized == Config.categoryStudentReflections.lowercased() {
             return showStudentReflections
         }
@@ -76,6 +80,7 @@ final class AppConfiguration: ObservableObject {
         static let showEditorial = "show_editorial"
         static let showHomeModules = "show_home_modules"
         static let showConnections = "show_connections"
+        static let showSeniorOfTheWeek = "show_sotw"
         static let aiNotice = "about_ai_notice"
         static let aiPolicyLabel = "about_ai_policy_label"
         static let aiPolicyURL = "about_ai_policy_url"
@@ -124,6 +129,7 @@ final class AppConfiguration: ObservableObject {
             Key.showEditorial: true as NSNumber,
             Key.showHomeModules: true as NSNumber,
             Key.showConnections: true as NSNumber,
+            Key.showSeniorOfTheWeek: true as NSNumber,
             Key.aiNotice: AppNotices.defaultAINotice as NSString,
             Key.aiPolicyLabel: "Read our AI usage policy" as NSString,
             Key.aiPolicyURL: "" as NSString,
@@ -175,7 +181,8 @@ final class AppConfiguration: ObservableObject {
             showArtsEntertainment: remoteConfig[Key.showArtsEntertainment].boolValue,
             showEditorial: remoteConfig[Key.showEditorial].boolValue,
             showHomeModules: remoteConfig[Key.showHomeModules].boolValue,
-            showConnections: remoteConfig[Key.showConnections].boolValue
+            showConnections: remoteConfig[Key.showConnections].boolValue,
+            showSeniorOfTheWeek: remoteConfig[Key.showSeniorOfTheWeek].boolValue
         )
 
         // An empty string means "not configured", so fall back rather than

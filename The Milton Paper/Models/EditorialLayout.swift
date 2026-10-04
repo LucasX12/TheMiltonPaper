@@ -49,13 +49,15 @@ struct SectionDescriptor: Identifiable, Hashable {
             "Sports",
             Config.categoryArtsEntertainment,
             "Editorial",
+            Config.categorySeniorOfTheWeek,
             Config.categoryStudentReflections,
             Config.categoryFacultyFarewells,
         ]
 
         for category in categories where flags.showsFeedCategory(category) {
             let isTemporary = category == Config.categoryStudentReflections ||
-                category == Config.categoryFacultyFarewells
+                category == Config.categoryFacultyFarewells ||
+                category == Config.categorySeniorOfTheWeek
             if !isTemporary || articles.contains(where: { $0.matches(category: category) }) {
                 result.append(.articles(category))
             }
@@ -82,7 +84,9 @@ struct EditorialLayout: Equatable {
                     ? $0.id < $1.id : $0.publishedDate > $1.publishedDate
             }
             .filter { seen.insert($0.id).inserted }
-        let specialNames = [Config.categoryStudentReflections, Config.categoryFacultyFarewells]
+        let specialNames = [Config.categoryStudentReflections,
+                            Config.categoryFacultyFarewells,
+                            Config.categorySeniorOfTheWeek]
         let core = visible.filter { article in
             !specialNames.contains(where: { article.matches(category: $0) })
         }

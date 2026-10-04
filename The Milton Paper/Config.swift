@@ -18,8 +18,12 @@ enum Config {
         // the feeds stop returning articles.
         RSSFeed(url: "https://www.themiltonpaper.com/student-reflections?format=rss",   category: categoryStudentReflections),
         RSSFeed(url: "https://www.themiltonpaper.com/faculty-farewells-tmp43?format=rss", category: categoryFacultyFarewells),
+        // Senior of the Week. Reading it here is what lets the front-page
+        // spotlight open in our own reader rather than a web view of the site.
+        RSSFeed(url: "https://www.themiltonpaper.com/sotw-tmp44?format=rss", category: categorySeniorOfTheWeek),
     ]
 
+    static let categorySeniorOfTheWeek    = "Senior of the Week"
     static let categoryStudentReflections = "Student Reflections"
     static let categoryFacultyFarewells   = "Faculty Farewells"
     static let categoryArtsEntertainment  = "A&E"

@@ -23,7 +23,13 @@ struct ArticleFeedView: View {
     @State private var externalURL: IdentifiedURL?
 
     private var layout: EditorialLayout {
-        EditorialLayout(articles: viewModel.filteredArticles, flags: appConfiguration.flags)
+        // A story a module already promotes is dropped from the feed, so the
+        // Senior of the Week isn't both a spotlight and a row beneath it.
+        let promoted = Set(homeModules.compactMap(\.linkURL))
+        let articles = promoted.isEmpty
+            ? viewModel.filteredArticles
+            : viewModel.filteredArticles.filter { !promoted.contains($0.articleURL) }
+        return EditorialLayout(articles: articles, flags: appConfiguration.flags)
     }
 
     private var homeModules: [HomeModule] {
